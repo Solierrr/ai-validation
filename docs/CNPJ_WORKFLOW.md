@@ -66,7 +66,7 @@ e utiliza um agente de IA para analisar semanticamente os CNAEs da empresa.
 
 ### 1. Sanitizacao do CNPJ
 
-**Arquivo:** `src/api/cnpj_routes.py` (`_sanitize_cnpj`)
+**Arquivo:** `src/api/routes/cnpj_routes.py` (`_sanitize_cnpj`)
 
 - Remove todos os caracteres nao-numericos (pontos, tracos, barras, espacos).
 - Valida que o resultado tem exatamente 14 digitos.
@@ -105,7 +105,7 @@ e utiliza um agente de IA para analisar semanticamente os CNAEs da empresa.
 
 ### 3. Verificacao de Situacao Cadastral
 
-**Arquivo:** `src/api/cnpj_routes.py`
+**Arquivo:** `src/api/routes/cnpj_routes.py`
 
 Verifica se `descricao_situacao_cadastral` == `"ATIVA"`.
 
@@ -120,7 +120,7 @@ Situacoes que resultam em rejeicao:
 
 ### 4. Agente de IA (Analise de CNAEs)
 
-**Arquivo:** `src/agents/cnpj_agent.py`
+**Arquivo:** `src/agents/specialist/cnpj_agent/cnpj_agent.py`
 
 O agente recebe os dados da empresa (razao social, nome fantasia, CNAE principal
 e CNAEs secundarios) e determina se o ramo de atividade e compativel.

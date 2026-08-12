@@ -22,7 +22,7 @@ os.environ["LLM_TEMPERATURE"] = "0.0"
 
 import pytest  # noqa: E402
 
-from src.core.config import get_settings  # noqa: E402
+from src.core.config.settings import get_settings  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -112,12 +112,12 @@ def _disable_rate_limiting():
     IP, então sem isso os últimos testes de cada endpoint receberiam HTTP 429.
     O teste dedicado de rate limit religa o limiter explicitamente.
     """
-    from src.api import cnpj_routes, routes
+    from src.api.routes import certificate_routes, cnpj_routes
 
-    routes.limiter.enabled = False
+    certificate_routes.limiter.enabled = False
     cnpj_routes.limiter.enabled = False
     yield
-    routes.limiter.enabled = True
+    certificate_routes.limiter.enabled = True
     cnpj_routes.limiter.enabled = True
 
 
@@ -126,6 +126,6 @@ def client():
     """Cliente HTTP de teste da aplicação FastAPI."""
     from fastapi.testclient import TestClient
 
-    from src.main import app
+    from main import app
 
     return TestClient(app)
