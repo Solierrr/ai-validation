@@ -8,20 +8,17 @@ Este módulo configura:
 - Registro das rotas da API.
 """
 
-import logging
-import sys
-
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
-from pythonjsonlogger import json as jsonlogger
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from src.api.routes import router
-from src.api.cnpj_routes import router as cnpj_router
+from src.api.routes.certificate_routes import router
+from src.api.routes.cnpj_routes import router as cnpj_router
+from src.core.logging.logging_config import configure_logging
 
 # Carrega variáveis de ambiente do arquivo .env para o os.environ
 load_dotenv()
@@ -29,19 +26,7 @@ load_dotenv()
 # ─── Logging Estruturado (JSON) ─────────────────────────────────────────────
 # Cada linha de log é emitida como JSON, facilitando integração com ferramentas
 # de observabilidade (CloudWatch, Datadog, ELK, etc.)
-log_handler = logging.StreamHandler(sys.stdout)
-log_handler.setFormatter(
-    jsonlogger.JsonFormatter(
-        fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
-        # Renomeia campos para um padrão mais legível em ferramentas de log
-        rename_fields={"asctime": "timestamp", "levelname": "level", "name": "logger"},
-    )
-)
-
-logging.basicConfig(
-    level=logging.INFO,
-    handlers=[log_handler],
-)
+configure_logging()
 
 # ─── Rate Limiting ───────────────────────────────────────────────────────────
 # Limita requisições por IP para evitar abuso e proteger a cota da API do Gemini.

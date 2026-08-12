@@ -13,24 +13,12 @@ as requisições da API, evitando overhead de recompilação.
 
 from langgraph.graph import END, StateGraph
 
-from src.agents.nr10_agent import nr10_agent_node
-from src.agents.nr35_agent import nr35_agent_node
-from src.agents.security_guardrail import security_guardrail_node
-from src.workflow.consolidation import consolidation_node
+from src.workflow.edges import _check_security
+from src.workflow.nodes.consolidation_node import consolidation_node
+from src.workflow.nodes.nr10_agent_node import nr10_agent_node
+from src.workflow.nodes.nr35_agent_node import nr35_agent_node
+from src.workflow.nodes.security_guardrail_node import security_guardrail_node
 from src.workflow.state import CertificateGraphState
-
-
-def _check_security(state: CertificateGraphState) -> str:
-    """
-    Função de roteamento condicional após o security guardrail.
-
-    Retorna:
-        "continue" → segue para os agentes especialistas (NR-10 → NR-35)
-        "reject"   → pula direto para consolidation (rejeição por segurança)
-    """
-    if state.get("is_safe", False):
-        return "continue"
-    return "reject"
 
 
 def build_graph() -> StateGraph:

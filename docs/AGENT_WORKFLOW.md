@@ -85,7 +85,7 @@ class CertificateGraphState(TypedDict):
 
 ### 1. Security Guardrail
 
-**Arquivo:** `src/agents/security_guardrail.py`  
+**Arquivo:** `src/workflow/nodes/security_guardrail_node.py`  
 **Tipo:** LLM Vision (Gemini)  
 **Objetivo:** Primeira linha de defesa antes dos agentes especialistas.
 
@@ -116,7 +116,7 @@ class CertificateGraphState(TypedDict):
 
 ### 2. NR-10 Agent
 
-**Arquivo:** `src/agents/nr10_agent.py`  
+**Arquivo:** `src/workflow/nodes/nr10_agent_node.py`  
 **Tipo:** LLM Vision (Gemini) com Structured Output  
 **Objetivo:** Validar o certificado NR-10 (Seguranca em Instalacoes Eletricas).
 
@@ -155,7 +155,7 @@ class CertificateGraphState(TypedDict):
 
 ### 3. NR-35 Agent
 
-**Arquivo:** `src/agents/nr35_agent.py`  
+**Arquivo:** `src/workflow/nodes/nr35_agent_node.py`  
 **Tipo:** LLM Vision (Gemini) com Structured Output  
 **Objetivo:** Validar o certificado NR-35 (Trabalho em Altura).
 
@@ -190,7 +190,7 @@ class CertificateGraphState(TypedDict):
 
 ### 4. Consolidation (Deterministic)
 
-**Arquivo:** `src/workflow/consolidation.py`  
+**Arquivo:** `src/workflow/nodes/consolidation_node.py`  
 **Tipo:** Logica deterministica (SEM LLM)  
 **Objetivo:** Tomar a decisao final com base nos resultados dos agentes.
 

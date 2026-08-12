@@ -1,11 +1,11 @@
-"""Testes do agente de segurança (src/agents/security_guardrail.py)."""
+"""Testes do agente de segurança (src/workflow/nodes/security_guardrail_node.py)."""
 
 import base64
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.agents.security_guardrail import (
+from src.workflow.nodes.security_guardrail_node import (
     GuardrailOutput,
     _download_image,
     security_guardrail_node,
@@ -41,7 +41,7 @@ def _wire_client(mock_client_cls, response=None, error=None):
 class TestDownloadImage:
     """Helper de download e conversão para base64."""
 
-    @patch("src.agents.security_guardrail.httpx.Client")
+    @patch("src.workflow.nodes.security_guardrail_node.httpx.Client")
     def test_returns_base64_and_mime_type(self, mock_client_cls):
         _wire_client(mock_client_cls)
 
@@ -50,7 +50,7 @@ class TestDownloadImage:
         assert b64 == EXPECTED_B64
         assert mime == "image/png"
 
-    @patch("src.agents.security_guardrail.httpx.Client")
+    @patch("src.workflow.nodes.security_guardrail_node.httpx.Client")
     def test_defaults_to_jpeg_when_header_absent(self, mock_client_cls):
         _wire_client(mock_client_cls, response=_fake_response(content_type=None))
 
@@ -58,7 +58,7 @@ class TestDownloadImage:
 
         assert mime == "image/jpeg"
 
-    @patch("src.agents.security_guardrail.httpx.Client")
+    @patch("src.workflow.nodes.security_guardrail_node.httpx.Client")
     def test_propagates_http_error(self, mock_client_cls):
         _wire_client(mock_client_cls, error=RuntimeError("404 not found"))
 
@@ -66,9 +66,9 @@ class TestDownloadImage:
             _download_image("https://exemplo.com/img")
 
 
-@patch("src.agents.security_guardrail.invoke_llm_with_retry")
-@patch("src.agents.security_guardrail.get_llm")
-@patch("src.agents.security_guardrail.httpx.Client")
+@patch("src.workflow.nodes.security_guardrail_node.invoke_llm_with_retry")
+@patch("src.workflow.nodes.security_guardrail_node.get_llm")
+@patch("src.workflow.nodes.security_guardrail_node.httpx.Client")
 class TestGuardrailNode:
     """Nó do security guardrail dentro da pipeline."""
 

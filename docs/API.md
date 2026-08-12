@@ -234,7 +234,7 @@ cp .env.example .env
 # Editar .env com sua GEMINI_API_KEY
 
 # Iniciar o servidor
-uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 A documentacao interativa (Swagger) fica disponivel em: `http://localhost:8000/docs`

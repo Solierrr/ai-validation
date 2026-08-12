@@ -13,8 +13,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.agents.nr10_agent import NRAgentOutput, nr10_agent_node
-from src.agents.nr35_agent import NR35AgentOutput, nr35_agent_node
+from src.workflow.nodes.nr10_agent_node import NRAgentOutput, nr10_agent_node
+from src.workflow.nodes.nr35_agent_node import NR35AgentOutput, nr35_agent_node
 
 IMAGE_BYTES = b"fake-certificate-bytes"
 EXPECTED_B64 = base64.b64encode(IMAGE_BYTES).decode("utf-8")
@@ -24,7 +24,7 @@ CURRENT_DATE = "2026-07-15"
 AGENTS = [
     pytest.param(
         SimpleNamespace(
-            module="src.agents.nr10_agent",
+            module="src.workflow.nodes.nr10_agent_node",
             node=nr10_agent_node,
             prefix="nr10",
             schema=NRAgentOutput,
@@ -33,7 +33,7 @@ AGENTS = [
     ),
     pytest.param(
         SimpleNamespace(
-            module="src.agents.nr35_agent",
+            module="src.workflow.nodes.nr35_agent_node",
             node=nr35_agent_node,
             prefix="nr35",
             schema=NR35AgentOutput,

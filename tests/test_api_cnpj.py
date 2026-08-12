@@ -1,4 +1,4 @@
-"""Testes da rota de validação de CNPJ (src/api/cnpj_routes.py)."""
+"""Testes da rota de validação de CNPJ (src/api/routes/cnpj_routes.py)."""
 
 from contextlib import ExitStack, contextmanager
 from types import SimpleNamespace
@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.api.cnpj_routes import _sanitize_cnpj
-from src.api.cnpj_schemas import CompanyLLMAuditOutput
+from src.api.routes.cnpj_routes import _sanitize_cnpj
+from src.api.schemas.cnpj_schemas import CompanyLLMAuditOutput
 
 ENDPOINT = "/api/v1/companies/validate-cnpj"
 CNPJ_FORMATTED = "12.345.678/0001-90"
@@ -19,9 +19,9 @@ def _mocks(company_data=None, audit=None, fetch_error=None, audit_error=None):
     """Mocka a consulta à BrasilAPI e o agente de IA usados pela rota."""
     with ExitStack() as stack:
         fetch = stack.enter_context(
-            patch("src.api.cnpj_routes.fetch_cnpj_data", new_callable=AsyncMock)
+            patch("src.api.routes.cnpj_routes.fetch_cnpj_data", new_callable=AsyncMock)
         )
-        analyze = stack.enter_context(patch("src.api.cnpj_routes.analyze_company"))
+        analyze = stack.enter_context(patch("src.api.routes.cnpj_routes.analyze_company"))
 
         if fetch_error is not None:
             fetch.side_effect = fetch_error

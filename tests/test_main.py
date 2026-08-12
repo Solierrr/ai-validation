@@ -1,6 +1,6 @@
-"""Testes da aplicação FastAPI (src/main.py)."""
+"""Testes da aplicação FastAPI (main.py)."""
 
-from src.main import app
+from main import app
 
 
 class TestHealthCheck:

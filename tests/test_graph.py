@@ -1,8 +1,9 @@
-"""Testes da topologia do grafo LangGraph (src/workflow/graph.py)."""
+"""Testes da topologia do grafo LangGraph (src/workflow/graph/graph.py)."""
 
 from unittest.mock import patch
 
-from src.workflow.graph import _check_security, build_graph, compiled_graph
+from src.workflow.edges import _check_security
+from src.workflow.graph.graph import build_graph, compiled_graph
 
 INITIAL_STATE = {
     "cert_nr10_url": "https://exemplo.com/nr10.jpg",
@@ -66,10 +67,10 @@ class TestPipelineExecution:
             return {"status": "ACCEPT" if state.get("is_safe") else "REJECTED", "reason": "ok"}
 
         with (
-            patch("src.workflow.graph.security_guardrail_node", fake_guardrail),
-            patch("src.workflow.graph.nr10_agent_node", fake_nr10),
-            patch("src.workflow.graph.nr35_agent_node", fake_nr35),
-            patch("src.workflow.graph.consolidation_node", fake_consolidation),
+            patch("src.workflow.graph.graph.security_guardrail_node", fake_guardrail),
+            patch("src.workflow.graph.graph.nr10_agent_node", fake_nr10),
+            patch("src.workflow.graph.graph.nr35_agent_node", fake_nr35),
+            patch("src.workflow.graph.graph.consolidation_node", fake_consolidation),
         ):
             return build_graph()
 

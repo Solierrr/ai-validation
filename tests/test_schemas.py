@@ -1,14 +1,14 @@
-"""Testes dos contratos de request/response (src/api/schemas.py e cnpj_schemas.py)."""
+"""Testes dos contratos de request/response (src/api/schemas/certificate_schemas.py e cnpj_schemas.py)."""
 
 import pytest
 from pydantic import ValidationError
 
-from src.api.cnpj_schemas import (
+from src.api.schemas.cnpj_schemas import (
     CNPJValidationRequest,
     CNPJValidationResponse,
     CompanyLLMAuditOutput,
 )
-from src.api.schemas import (
+from src.api.schemas.certificate_schemas import (
     CertificateValidationRequest,
     CertificateValidationResponse,
     ExtractedData,

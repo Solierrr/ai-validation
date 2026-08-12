@@ -1,4 +1,4 @@
-"""Testes do módulo de LLM e da cadeia de fallback (src/core/llm.py)."""
+"""Testes do módulo de LLM e da cadeia de fallback (src/core/llm/)."""
 
 from unittest.mock import MagicMock, patch
 
@@ -49,7 +49,7 @@ def _mock_llm(result=None, error=None):
 class TestGetLlm:
     """Factory do cliente Gemini."""
 
-    @patch("src.core.llm.ChatGoogleGenerativeAI")
+    @patch("src.core.llm.llm_gemini.ChatGoogleGenerativeAI")
     def test_uses_primary_key_and_settings_by_default(self, mock_gemini):
         get_llm()
 
@@ -59,7 +59,7 @@ class TestGetLlm:
         assert kwargs["temperature"] == 0.0
         assert kwargs["timeout"] == 60
 
-    @patch("src.core.llm.ChatGoogleGenerativeAI")
+    @patch("src.core.llm.llm_gemini.ChatGoogleGenerativeAI")
     def test_explicit_api_key_overrides_settings(self, mock_gemini):
         get_llm(api_key="chave-alternativa")
 
@@ -69,7 +69,7 @@ class TestGetLlm:
 class TestGetGroqLlm:
     """Factory do cliente Groq (fallback)."""
 
-    @patch("src.core.llm.ChatGroq")
+    @patch("src.core.llm.llm_groq.ChatGroq")
     def test_uses_primary_groq_key_by_default(self, mock_groq):
         get_groq_llm()
 
@@ -78,7 +78,7 @@ class TestGetGroqLlm:
         assert kwargs["model"] == "llama-3.3-70b-versatile"
         assert kwargs["timeout"] == 60
 
-    @patch("src.core.llm.ChatGroq")
+    @patch("src.core.llm.llm_groq.ChatGroq")
     def test_explicit_api_key_overrides_settings(self, mock_groq):
         get_groq_llm(api_key="groq-alternativa")
 
@@ -115,7 +115,7 @@ class TestInvokeSuccessAndErrors:
 
         assert invoke_llm_with_retry(primary, MESSAGES) == "resultado-ok"
 
-    @patch("src.core.llm.get_llm")
+    @patch("src.core.llm.llm_retry.get_llm")
     def test_does_not_fallback_when_error_is_not_rate_limit(self, mock_get_llm):
         """Erro que não é de cota deve propagar sem consumir chaves extras."""
         primary = _mock_llm(error=ValueError("modelo inexistente")).with_structured_output(
@@ -131,7 +131,7 @@ class TestInvokeSuccessAndErrors:
 class TestGeminiFallback:
     """Fallback entre as chaves Gemini quando há estouro de cota."""
 
-    @patch("src.core.llm.get_llm")
+    @patch("src.core.llm.llm_retry.get_llm")
     def test_falls_back_to_second_gemini_key(self, mock_get_llm):
         mock_get_llm.return_value = _mock_llm(result="ok-key2")
         primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
@@ -141,7 +141,7 @@ class TestGeminiFallback:
         assert result == "ok-key2"
         mock_get_llm.assert_called_once_with(api_key="test-gemini-key-2")
 
-    @patch("src.core.llm.get_llm")
+    @patch("src.core.llm.llm_retry.get_llm")
     def test_falls_back_to_third_gemini_key(self, mock_get_llm):
         """Se a chave 2 também estourar, deve tentar a chave 3."""
         mock_get_llm.side_effect = [
@@ -155,7 +155,7 @@ class TestGeminiFallback:
         assert result == "ok-key3"
         assert mock_get_llm.call_count == 2
 
-    @patch("src.core.llm.get_llm")
+    @patch("src.core.llm.llm_retry.get_llm")
     def test_propagates_non_rate_limit_error_from_fallback(self, mock_get_llm):
         mock_get_llm.return_value = _mock_llm(error=ValueError("chave inválida"))
         primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
@@ -163,7 +163,7 @@ class TestGeminiFallback:
         with pytest.raises(ValueError, match="chave inválida"):
             invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
 
-    @patch("src.core.llm.get_llm")
+    @patch("src.core.llm.llm_retry.get_llm")
     def test_invokes_llm_directly_when_no_output_schema(self, mock_get_llm):
         """Sem output_schema, o fallback usa o LLM cru (sem structured output)."""
         fallback = _mock_llm(result="ok-cru")
@@ -176,8 +176,8 @@ class TestGeminiFallback:
         fallback.with_structured_output.assert_not_called()
 
 
-@patch("src.core.llm.get_groq_llm")
-@patch("src.core.llm.get_llm")
+@patch("src.core.llm.llm_retry.get_groq_llm")
+@patch("src.core.llm.llm_retry.get_llm")
 class TestGroqFallback:
     """Fallback para o Groq depois que todas as chaves Gemini estouram."""
 

@@ -1,4 +1,4 @@
-"""Testes do agente auditor de CNPJ (src/agents/cnpj_agent.py)."""
+"""Testes do agente auditor de CNPJ (src/agents/specialist/cnpj_agent/cnpj_agent.py)."""
 
 from contextlib import ExitStack, contextmanager
 from types import SimpleNamespace
@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from src.agents.cnpj_agent import _format_cnaes_secundarios, analyze_company
-from src.api.cnpj_schemas import CompanyLLMAuditOutput
+from src.agents.specialist.cnpj_agent.cnpj_agent import _format_cnaes_secundarios, analyze_company
+from src.api.schemas.cnpj_schemas import CompanyLLMAuditOutput
 
 
 @contextmanager
@@ -15,9 +15,11 @@ def _mocks():
     """Patches do LLM usados pelo agente de CNPJ."""
     with ExitStack() as stack:
         yield SimpleNamespace(
-            get_llm=stack.enter_context(patch("src.agents.cnpj_agent.get_llm")),
+            get_llm=stack.enter_context(
+                patch("src.agents.specialist.cnpj_agent.cnpj_agent.get_llm")
+            ),
             invoke=stack.enter_context(
-                patch("src.agents.cnpj_agent.invoke_llm_with_retry")
+                patch("src.agents.specialist.cnpj_agent.cnpj_agent.invoke_llm_with_retry")
             ),
         )
 

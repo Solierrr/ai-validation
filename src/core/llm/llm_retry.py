@@ -1,44 +1,14 @@
 """
-Módulo de integração com LLMs (Google Gemini + Groq como fallback).
-
-Fornece:
-- get_llm(): factory para instância do Gemini.
-- get_groq_llm(): factory para instância do Groq (fallback).
-- invoke_llm_with_retry(): invoca com fallback entre keys Gemini + Groq.
+Invocação de LLM com fallback automático entre múltiplas API keys/provedores.
 """
 
 import logging
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_groq import ChatGroq
-
-from src.core.config import get_settings
+from src.core.config.settings import get_settings
+from src.core.llm.llm_gemini import get_llm
+from src.core.llm.llm_groq import get_groq_llm
 
 logger = logging.getLogger(__name__)
-
-
-def get_llm(api_key: str = None) -> ChatGoogleGenerativeAI:
-    """Cria uma instância do Gemini configurada."""
-    settings = get_settings()
-    key = api_key or settings.GEMINI_API_KEY
-    return ChatGoogleGenerativeAI(
-        model=settings.LLM_MODEL,
-        temperature=settings.LLM_TEMPERATURE,
-        google_api_key=key,
-        timeout=60,
-    )
-
-
-def get_groq_llm(api_key: str = None) -> ChatGroq:
-    """Cria uma instância do Groq (Llama 3.3 70B) como fallback."""
-    settings = get_settings()
-    key = api_key or settings.GROQ_API_KEY
-    return ChatGroq(
-        model="llama-3.3-70b-versatile",
-        temperature=settings.LLM_TEMPERATURE,
-        api_key=key,
-        timeout=60,
-    )
 
 
 def _is_rate_limit_error(error: Exception) -> bool:

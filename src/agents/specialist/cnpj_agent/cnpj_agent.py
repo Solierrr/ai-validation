@@ -9,43 +9,12 @@ Usa LLM com structured output para retornar a decisão.
 import logging
 from typing import Any, Dict
 
-from src.api.cnpj_schemas import CompanyLLMAuditOutput
-from src.core.llm import get_llm, invoke_llm_with_retry
+from src.agents.specialist.cnpj_agent.cnpj_agent_prompt import CNPJ_AUDIT_PROMPT
+from src.api.schemas.cnpj_schemas import CompanyLLMAuditOutput
+from src.core.llm.llm_gemini import get_llm
+from src.core.llm.llm_retry import invoke_llm_with_retry
 
 logger = logging.getLogger(__name__)
-
-# ─── Prompt do sistema para o agente auditor de CNPJ ─────────────────────────
-CNPJ_AUDIT_PROMPT = """Você é um auditor corporativo especializado no mercado de energia e engenharia no Brasil.
-Sua missão é determinar se a empresa analisada possui autorização/ramo de atividade compatível para atuar na venda, projeto, instalação, manutenção ou suporte de sistemas de energia solar fotovoltaica e elétrica.
-
-DADOS DA EMPRESA (EXTRAÍDOS DA RECEITA FEDERAL):
-- Razão Social: {razao_social}
-- Nome Fantasia: {nome_fantasia}
-- CNAE Principal: {cnae_principal_codigo} - {cnae_principal_descricao}
-- CNAEs Secundários:
-{lista_cnaes_secundarios}
-
-REGRAS DE AVALIAÇÃO:
-1. APROVE (is_compatible = true) se a empresa possuir pelo menos UMA atividade relacionada a:
-   - Energia Solar, Fotovoltaica ou Fontes Renováveis.
-   - Engenharia (Elétrica, Civil, Mecânica ou Geral).
-   - Instalações, Montagens, Manutenção Elétrica ou Hidráulica.
-   - Comércio (Atacadista ou Varejista) de Materiais Elétricos, Equipamentos Eletrônicos, Máquinas ou Ferramentas.
-   - Serviços de Arquitetura, Climatização, Refrigeração ou Obras de Alvenaria/Telhado.
-   - Treinamentos Técnicos ou Desenvolvimento Profissional.
-
-2. REJEITE (is_compatible = false) se a empresa for exclusivamente de ramos sem correlação técnica, tais como:
-   - Alimentação (Lanchonetes, Restaurantes, Padarias, Bares).
-   - Saúde, Odontologia e Farmácias.
-   - Vestuário, Calçados e Beleza.
-   - Transporte de Passageiros, Pet Shops, Supermercados ou Consultorias Jurídicas/Contábeis puras.
-
-RESPOSTA ESPERADA (JSON STRICT):
-{{
-  "is_compatible": boolean,
-  "category_label": string,
-  "justification": string
-}}"""
 
 
 def _format_cnaes_secundarios(cnaes: list) -> str:

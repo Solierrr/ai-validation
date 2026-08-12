@@ -1,4 +1,4 @@
-"""Testes da rota de validação de certificados (src/api/routes.py)."""
+"""Testes da rota de validação de certificados (src/api/routes/certificate_routes.py)."""
 
 from datetime import date
 from unittest.mock import AsyncMock, patch
@@ -41,7 +41,7 @@ class TestRequestValidation:
 class TestPipelineResults:
     """Tradução do resultado da pipeline para a resposta HTTP."""
 
-    @patch("src.api.routes.compiled_graph")
+    @patch("src.api.routes.certificate_routes.compiled_graph")
     def test_returns_accept(self, mock_graph, client):
         mock_graph.ainvoke = AsyncMock(return_value=ACCEPT_RESULT)
 
@@ -53,7 +53,7 @@ class TestPipelineResults:
         assert body["error_code"] is None
         assert body["extracted_data"]["detected_student_name"] == "Carlos Eduardo da Silva"
 
-    @patch("src.api.routes.compiled_graph")
+    @patch("src.api.routes.certificate_routes.compiled_graph")
     def test_returns_rejected_with_error_code(self, mock_graph, client):
         mock_graph.ainvoke = AsyncMock(
             return_value={
@@ -72,7 +72,7 @@ class TestPipelineResults:
         assert body["error_code"] == "INSUFFICIENT_WORKLOAD"
         assert body["extracted_data"] is None
 
-    @patch("src.api.routes.compiled_graph")
+    @patch("src.api.routes.certificate_routes.compiled_graph")
     def test_defaults_to_rejected_when_pipeline_returns_nothing(self, mock_graph, client):
         """Sem status no resultado, a resposta assume REJECTED (fail-safe)."""
         mock_graph.ainvoke = AsyncMock(return_value={})
@@ -86,7 +86,7 @@ class TestPipelineResults:
 class TestInitialState:
     """Estado inicial montado pela rota antes de invocar a pipeline."""
 
-    @patch("src.api.routes.compiled_graph")
+    @patch("src.api.routes.certificate_routes.compiled_graph")
     def test_forwards_urls_as_strings(self, mock_graph, client):
         mock_graph.ainvoke = AsyncMock(return_value=ACCEPT_RESULT)
 
@@ -97,7 +97,7 @@ class TestInitialState:
         assert state["cert_nr35_url"] == VALID_PAYLOAD["cert_nr35_url"]
         assert isinstance(state["cert_nr10_url"], str)
 
-    @patch("src.api.routes.compiled_graph")
+    @patch("src.api.routes.certificate_routes.compiled_graph")
     def test_injects_current_date(self, mock_graph, client):
         """A data de referência é injetada pelo servidor, não pelo cliente."""
         mock_graph.ainvoke = AsyncMock(return_value=ACCEPT_RESULT)
@@ -111,7 +111,7 @@ class TestInitialState:
 class TestErrorHandling:
     """Falhas inesperadas da pipeline."""
 
-    @patch("src.api.routes.compiled_graph")
+    @patch("src.api.routes.certificate_routes.compiled_graph")
     def test_returns_500_on_pipeline_failure(self, mock_graph, client):
         mock_graph.ainvoke = AsyncMock(side_effect=RuntimeError("LLM timeout"))
 
@@ -124,9 +124,9 @@ class TestErrorHandling:
 class TestRateLimiting:
     """Proteção contra abuso: 10 requisições por minuto por IP."""
 
-    @patch("src.api.routes.compiled_graph")
+    @patch("src.api.routes.certificate_routes.compiled_graph")
     def test_returns_429_after_exceeding_limit(self, mock_graph, client):
-        from src.api import routes
+        from src.api.routes import certificate_routes as routes
 
         mock_graph.ainvoke = AsyncMock(return_value=ACCEPT_RESULT)
 

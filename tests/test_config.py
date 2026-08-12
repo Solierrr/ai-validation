@@ -1,6 +1,6 @@
-"""Testes do módulo de configuração (src/core/config.py)."""
+"""Testes do módulo de configuração (src/core/config/settings.py)."""
 
-from src.core.config import Settings, get_settings
+from src.core.config.settings import Settings, get_settings
 
 
 class TestSettingsLoading:

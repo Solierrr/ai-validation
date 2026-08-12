@@ -15,8 +15,8 @@ from fastapi import APIRouter, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from src.api.cnpj_schemas import CNPJValidationRequest, CNPJValidationResponse
-from src.agents.cnpj_agent import analyze_company
+from src.api.schemas.cnpj_schemas import CNPJValidationRequest, CNPJValidationResponse
+from src.agents.specialist.cnpj_agent.cnpj_agent import analyze_company
 from src.services.brasil_api import fetch_cnpj_data
 
 logger = logging.getLogger(__name__)

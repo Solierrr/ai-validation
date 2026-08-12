@@ -1,6 +1,6 @@
-"""Testes da consolidação determinística (src/workflow/consolidation.py)."""
+"""Testes da consolidação determinística (src/workflow/nodes/consolidation_node.py)."""
 
-from src.workflow.consolidation import MAX_CERTIFICATE_AGE_DAYS, consolidation_node
+from src.workflow.nodes.consolidation_node import MAX_CERTIFICATE_AGE_DAYS, consolidation_node
 
 # Data de referência usada nos testes de expiração
 REFERENCE_DATE = "2026-07-15"
