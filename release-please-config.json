@@ -6,8 +6,7 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "package-name": "ai-validation",
-      "release-as": "3.0.0"
+      "package-name": "ai-validation"
     }
   }
 }
