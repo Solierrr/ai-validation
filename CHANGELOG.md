@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/Solierrr/ai-validation/compare/v3.0.0...v3.0.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* support current infisical cli repository ([2c44ac2](https://github.com/Solierrr/ai-validation/commit/2c44ac2907591b379a478f027afc6320087c6c50))
+
 ## [3.0.0](https://github.com/Solierrr/ai-validation/compare/v0.1.0...v3.0.0) (2026-09-24)
 
 
