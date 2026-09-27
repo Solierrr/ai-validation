@@ -48,3 +48,5 @@ O `ai-validation` é o serviço de validação automatizada por IA da plataforma
 - [CONTRIBUTING.md](https://github.com/Solierrr/.github/blob/main/.github/CONTRIBUTING.md), convenções de commit, branch e Pull Request.
 - [CODE_OF_CONDUCT.md](https://github.com/Solierrr/.github/blob/main/.github/CODE_OF_CONDUCT.md), código de conduta do projeto.
 - [SECURITY.md](https://github.com/Solierrr/.github/blob/main/.github/SECURITY.md), como reportar vulnerabilidades de segurança.
+
+<!-- pr de teste dos comentarios automaticos, pode reverter -->
