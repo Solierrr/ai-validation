@@ -50,3 +50,5 @@ O `ai-validation` é o serviço de validação automatizada por IA da plataforma
 - [SECURITY.md](https://github.com/Solierrr/.github/blob/main/.github/SECURITY.md), como reportar vulnerabilidades de segurança.
 
 <!-- pr de teste dos comentarios automaticos, pode reverter -->
+
+<!-- pr de teste dos comentarios automaticos, pode reverter -->
