@@ -24,4 +24,4 @@ pytest-asyncio==1.4.0
 pytest-cov==7.1.0
 pytest-mock==3.16.0
 ruff==0.16.10
-solaria-lib @ git+https://github.com/Solierrr/ai-lib.git@feat/initial-package
+solaria-lib @ git+https://github.com/Solierrr/ai-lib.git@1016ebb7c716fb878bf1ec54635947e84441907e
