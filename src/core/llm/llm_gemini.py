@@ -2,18 +2,20 @@
 Factory do cliente Gemini (LLM principal).
 """
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+from ai_lib.llm import LeasedChatModel, get_chat_model
 
 from src.core.config.settings import get_settings
+from src.core.llm.registry import registry_client
 
 
-def get_llm(api_key: str = None) -> ChatGoogleGenerativeAI:
-    """Cria uma instância do Gemini configurada."""
+def get_llm() -> LeasedChatModel:
+    """Cria o Gemini configurado; a chave é pedida ao corretor a cada chamada."""
     settings = get_settings()
-    key = api_key or settings.GEMINI_API_KEY
-    return ChatGoogleGenerativeAI(
+    return get_chat_model(
+        "gemini",
         model=settings.LLM_MODEL,
         temperature=settings.LLM_TEMPERATURE,
-        google_api_key=key,
+        purpose="vision",
+        client=registry_client(),
         timeout=60,
     )

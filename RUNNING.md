@@ -11,8 +11,7 @@ Este repositório é Python. O processo local é sempre o mesmo: clonar, criar u
 ## Possíveis Impedimentos
 
 - **Python instalado localmente**, o `Dockerfile` usa a imagem `python:latest` e o workflow de CI (`.github/workflows/ci.yml`) roda sob Python `3.14`; recomenda-se usar essa versão localmente para evitar divergência de comportamento entre libs.
-- **Chave de API do Gemini (`GEMINI_API_KEY`)**, obrigatória — os agentes de IA (validação de certificados e de CNPJ) chamam o Google Gemini via `langchain-google-genai`. Sem uma chave válida em `.env`, a aplicação sobe mas os endpoints de validação falham ao processar.
-- **Chave de API do Groq (`GROQ_API_KEY`)**, opcional — usada como fallback pelo cliente alternativo em `src/core/llm/llm_groq.py` (`src/core/config/settings.py` a define como `Optional`); a aplicação sobe normalmente sem ela.
+- **google-registry (`REGISTRY_URL` e `REGISTRY_CONSUMER_TOKEN`)**, obrigatórios — os agentes de IA (validação de certificados e de CNPJ) pedem a chave do Gemini (e do Groq, no fallback) ao corretor de chaves do `google-registry` a cada chamada, via a lib `solaria-lib`. O serviço não guarda chaves de LLM; sem o registry acessível, os endpoints de validação falham ao processar.
 - **Acesso à internet para a BrasilAPI**, o fluxo de validação de CNPJ consulta `https://brasilapi.com.br/api/cnpj/v1/{cnpj}` em tempo real; sem conectividade de saída, esse endpoint retorna erro 502.
 - **Rate limiting ativo mesmo localmente**, o `slowapi` limita requisições por IP (10/min para certificados, 20/min para CNPJ) mesmo em ambiente de desenvolvimento — testes de carga local podem esbarrar nesse limite.
 
@@ -42,7 +41,7 @@ code . -r
   </a>
 </p>
 
-Crie um ambiente virtual antes de instalar as dependências, para não poluir o Python global da máquina. Depois de instalar, copie o `.env.example` para `.env` e preencha `GEMINI_API_KEY` (obrigatória) antes de subir o servidor.
+Crie um ambiente virtual antes de instalar as dependências, para não poluir o Python global da máquina. Depois de instalar, copie o `.env.example` para `.env` e preencha `REGISTRY_URL` e `REGISTRY_CONSUMER_TOKEN` (obrigatórias) antes de subir o servidor.
 
 ```Comandos para instalação de dependências
 python -m venv .venv

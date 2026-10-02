@@ -2,18 +2,21 @@
 Factory do cliente Groq (fallback do Gemini).
 """
 
-from langchain_groq import ChatGroq
+from ai_lib.llm import LeasedChatModel, get_chat_model
 
 from src.core.config.settings import get_settings
+from src.core.llm.registry import registry_client
+
+GROQ_MODEL = "openai/gpt-oss-120b"
 
 
-def get_groq_llm(api_key: str = None) -> ChatGroq:
-    """Cria uma instância do Groq (Llama 3.3 70B) como fallback."""
+def get_groq_llm() -> LeasedChatModel:
+    """Cria o Groq como fallback; a chave é pedida ao corretor a cada chamada."""
     settings = get_settings()
-    key = api_key or settings.GROQ_API_KEY
-    return ChatGroq(
-        model="llama-3.3-70b-versatile",
+    return get_chat_model(
+        "groq",
+        model=GROQ_MODEL,
         temperature=settings.LLM_TEMPERATURE,
-        api_key=key,
+        client=registry_client(),
         timeout=60,
     )
