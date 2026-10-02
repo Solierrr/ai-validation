@@ -1,83 +1,53 @@
 """
-Invocação de LLM com fallback automático entre múltiplas API keys/provedores.
+Invocação de LLM com fallback para o Groq quando as chaves Gemini se esgotam.
+
+O rodízio entre chaves do mesmo provedor é feito pelo google-registry: cada
+chamada do LLM pede uma chave ao corretor, avisa o resultado e, em rate limit,
+repete com outra chave.
 """
 
 import logging
 
-from src.core.config.settings import get_settings
-from src.core.llm.llm_gemini import get_llm
+from ai_lib.llm import classify_key_failure
+from ai_lib.registry import RegistryKeysUnavailable
+
 from src.core.llm.llm_groq import get_groq_llm
 
 logger = logging.getLogger(__name__)
 
 
-def _is_rate_limit_error(error: Exception) -> bool:
-    """Verifica se o erro é de rate limit (429)."""
-    error_str = str(error)
-    return "429" in error_str or "RESOURCE_EXHAUSTED" in error_str
+def _is_key_exhausted_error(error: Exception) -> bool:
+    """Verifica se as chaves do provedor se esgotaram (rate limit ou nenhuma disponível)."""
+    if isinstance(error, RegistryKeysUnavailable):
+        return True
+    failure = classify_key_failure(error)
+    return failure is not None and failure.outcome == "rate_limited"
 
 
-def invoke_llm_with_retry(structured_llm, messages, output_schema=None, allow_groq_fallback=True):
+def invoke_llm_with_retry(
+    structured_llm, messages, output_schema=None, allow_groq_fallback=True
+):
     """
-    Invoca o LLM com fallback automático.
+    Invoca o LLM com fallback para o Groq.
 
     Ordem de tentativas:
-    1. Gemini (key principal)
-    2. Gemini (key 2, se configurada)
-    3. Groq Llama 3.3 70B (apenas se allow_groq_fallback=True e mensagens são texto)
+    1. Gemini (chave entregue pelo corretor, com rodízio de chaves interno)
+    2. Groq (apenas se allow_groq_fallback=True, output_schema informado e
+       as chaves Gemini se esgotaram)
 
     Args:
         structured_llm: LLM já configurado com .with_structured_output()
         messages: Lista de mensagens para enviar ao modelo.
-        output_schema: Classe Pydantic do output (para recriar com outra key/provider).
+        output_schema: Classe Pydantic do output (para recriar no Groq).
         allow_groq_fallback: Se False, não tenta Groq (usar para chamadas com imagens).
     """
-    settings = get_settings()
-
-    # ─── Tentativa 1: Gemini key principal ───────────────────────────────────
     try:
         return structured_llm.invoke(messages)
-    except Exception as e:
-        if not _is_rate_limit_error(e):
+    except Exception as error:
+        if not (
+            allow_groq_fallback and output_schema and _is_key_exhausted_error(error)
+        ):
             raise
-        logger.warning("Gemini key principal atingiu rate limit.")
+        logger.warning("Chaves Gemini esgotadas, tentando Groq.")
 
-    # ─── Tentativa 2: Gemini keys alternativas (sem retry, 1 tentativa cada) ─
-    fallback_keys = settings.api_keys[1:]
-    for i, key in enumerate(fallback_keys, start=2):
-        try:
-            logger.info("Tentando Gemini key %d...", i)
-            fallback_llm = get_llm(api_key=key)
-            if output_schema:
-                fallback_structured = fallback_llm.with_structured_output(output_schema)
-            else:
-                fallback_structured = fallback_llm
-            return fallback_structured.invoke(messages)
-        except Exception as fallback_err:
-            if not _is_rate_limit_error(fallback_err):
-                raise
-            logger.warning("Gemini key %d também atingiu rate limit.", i)
-
-    # ─── Tentativa final: Groq (Llama 3.3 70B) ──────────────────────────────
-    # Groq só suporta texto — não funciona com imagens (Vision)
-    groq_keys = settings.groq_keys
-    if allow_groq_fallback and groq_keys:
-        for j, groq_key in enumerate(groq_keys, start=1):
-            try:
-                logger.info("Tentando Groq key %d...", j)
-                groq_llm = get_groq_llm(api_key=groq_key)
-                if output_schema:
-                    groq_structured = groq_llm.with_structured_output(output_schema)
-                else:
-                    groq_structured = groq_llm
-                return groq_structured.invoke(messages)
-            except Exception as groq_err:
-                if not _is_rate_limit_error(groq_err):
-                    raise
-                logger.warning("Groq key %d também atingiu rate limit.", j)
-
-    # Nenhum fallback disponível
-    raise Exception(
-        "Todas as API keys atingiram rate limit e não há fallback disponível. "
-        "Tente novamente em alguns minutos."
-    )
+    return get_groq_llm().with_structured_output(output_schema).invoke(messages)
