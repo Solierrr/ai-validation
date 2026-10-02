@@ -7,6 +7,7 @@ e disponibilizá-las de forma tipada e validada para o restante do projeto.
 
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
@@ -18,7 +19,9 @@ class Settings(BaseSettings):
     serviço recebe a URL do registry e o token de consumidor.
     """
 
-    REGISTRY_URL: str  # URL base do google-registry (obrigatória)
+    REGISTRY_URL: str = Field(
+        validation_alias=AliasChoices("REGISTRY_URL", "GOOGLE_REGISTRY_URL")
+    )  # URL base do google-registry (obrigatória)
     REGISTRY_CONSUMER_TOKEN: (
         str  # Token de consumidor do corretor de chaves (obrigatório)
     )

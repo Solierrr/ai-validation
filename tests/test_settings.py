@@ -54,3 +54,16 @@ class TestSettingsCache:
         get_settings.cache_clear()
 
         assert get_settings() is not first
+
+
+class TestRegistryUrlAlias:
+    """A URL do registry também é aceita com o nome usado no Infisical."""
+
+    def test_accepts_the_infisical_name(self):
+        settings = Settings(
+            _env_file=None,
+            GOOGLE_REGISTRY_URL="http://registry.test",
+            REGISTRY_CONSUMER_TOKEN="t",
+        )
+
+        assert settings.REGISTRY_URL == "http://registry.test"
