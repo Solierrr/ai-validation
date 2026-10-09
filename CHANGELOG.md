@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.0](https://github.com/Solierrr/ai-validation/compare/v3.1.0...v3.2.0) (2026-10-09)
+
+
+### Features
+
+* add the local run commands ([4d1eb6e](https://github.com/Solierrr/ai-validation/commit/4d1eb6eafa4640cd7910f2b4d5896f96ba3f8a73))
+
 ## [3.1.0](https://github.com/Solierrr/ai-validation/compare/v3.0.0...v3.1.0) (2026-09-30)
 
 
