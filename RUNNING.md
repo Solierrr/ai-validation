@@ -84,7 +84,7 @@ docker run --env-file .env -p 8000:8000 ai-validation
 
 ## Telemetria (OpenTelemetry)
 
-O serviço envia traces, métricas e logs por OTLP pelo wrapper `opentelemetry-instrument` (auto-instrumentação de FastAPI e `logging`), sem código na aplicação. Ele só é usado quando `OTEL_SDK_DISABLED=false`; sem isso o serviço sobe como antes. Para ver a telemetria localmente, use o Grafana local pelo `make up OBS=1` (ver `docs-warehouse/helps/TRY-LOCAL.md`).
+O serviço envia traces, métricas e logs por OTLP pelo wrapper `opentelemetry-instrument` (auto-instrumentação de FastAPI e `logging`), sem código na aplicação. Ele só é usado quando `OTEL_SDK_DISABLED=false`; sem isso o serviço sobe como antes. Para ver a telemetria localmente, suba o Grafana local com `make obs-up` no repositório `infra-otel-collector` (ver `docs-warehouse/helps/TRY-LOCAL.md`).
 
 ```text
 OTEL_SDK_DISABLED=false
