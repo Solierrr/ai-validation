@@ -13,10 +13,10 @@ import os
 # Variáveis de ambiente têm precedência sobre o arquivo .env no pydantic-settings,
 # então esses valores fake sobrescrevem qualquer .env presente localmente.
 os.environ["GEMINI_API_KEY"] = "test-gemini-key-1"
-os.environ["GEMINI_API_KEY2"] = "test-gemini-key-2"
-os.environ["GEMINI_API_KEY3"] = "test-gemini-key-3"
 os.environ["GROQ_API_KEY"] = "test-groq-key-1"
-os.environ["GROQ_API_KEY2"] = "test-groq-key-2"
+os.environ["OPENAI_API_KEY"] = "test-openai-key-1"
+os.environ["LLM_MODEL_OPENAI"] = "gpt-6-luna"
+os.environ["LLM_PROVIDER_ORDER"] = "gemini,groq,openai"
 os.environ["LLM_MODEL"] = "gemini-2.5-flash"
 os.environ["LLM_TEMPERATURE"] = "0.0"
 
