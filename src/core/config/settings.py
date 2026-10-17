@@ -19,7 +19,9 @@ class Settings(BaseSettings):
     # As chaves de LLM (GEMINI_API_KEY, GROQ_API_KEY, OPENAI_API_KEY) são lidas do ambiente pela
     # solaria-lib (src/core/llm/keys.py); uma chave por provedor.
 
-    LLM_MODEL: str = "gemini-2.5-flash"  # Modelo atual com Vision e boa relação custo/performance
+    LLM_MODEL: str = (
+        "gemini-2.5-flash"  # Modelo atual com Vision e boa relação custo/performance
+    )
     LLM_TEMPERATURE: float = 0.0  # Temperatura 0 = output determinístico
 
     # Configuração do pydantic-settings: lê do arquivo .env na raiz do projeto

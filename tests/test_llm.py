@@ -109,9 +109,9 @@ class TestInvokeSuccessAndErrors:
 
     @patch("src.core.llm.llm_retry.get_groq_llm")
     def test_does_not_fallback_when_error_is_not_rate_limit(self, mock_groq):
-        primary = _mock_llm(error=ValueError("modelo inexistente")).with_structured_output(
-            DummyOutput
-        )
+        primary = _mock_llm(
+            error=ValueError("modelo inexistente")
+        ).with_structured_output(DummyOutput)
 
         with pytest.raises(ValueError, match="modelo inexistente"):
             invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
@@ -133,7 +133,9 @@ class TestProviderFallback:
         assert result == "ok-groq"
         mock_openai.assert_not_called()
 
-    def test_falls_back_to_openai_when_groq_is_also_exhausted(self, mock_groq, mock_openai):
+    def test_falls_back_to_openai_when_groq_is_also_exhausted(
+        self, mock_groq, mock_openai
+    ):
         mock_groq.return_value = _mock_llm(error=RATE_LIMIT_ERROR)
         mock_openai.return_value = _mock_llm(result="ok-openai")
         primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
@@ -154,12 +156,17 @@ class TestProviderFallback:
         assert result == "ok-openai-vision"
         mock_groq.assert_not_called()
 
-    def test_follows_the_configured_provider_order(self, mock_groq, mock_openai, monkeypatch):
+    def test_follows_the_configured_provider_order(
+        self, mock_groq, mock_openai, monkeypatch
+    ):
         monkeypatch.setenv("LLM_PROVIDER_ORDER", "gemini,openai,groq")
         mock_openai.return_value = _mock_llm(result="ok-openai")
         primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
 
-        assert invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput) == "ok-openai"
+        assert (
+            invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
+            == "ok-openai"
+        )
         mock_groq.assert_not_called()
 
     def test_invokes_llm_directly_when_no_output_schema(self, mock_groq, mock_openai):
@@ -178,7 +185,9 @@ class TestProviderFallback:
         with pytest.raises(Exception, match="rate limit"):
             invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
 
-    def test_propagates_non_rate_limit_error_from_fallback(self, mock_groq, mock_openai):
+    def test_propagates_non_rate_limit_error_from_fallback(
+        self, mock_groq, mock_openai
+    ):
         mock_groq.return_value = _mock_llm(error=ValueError("chave inválida"))
         primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
 

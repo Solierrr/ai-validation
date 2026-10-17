@@ -27,7 +27,9 @@ def _fallback_providers(allow_groq_fallback: bool) -> list[str]:
     order = provider_order() or ["groq"]
     providers = [provider for provider in order if provider != "gemini"]
     if not allow_groq_fallback:
-        providers = [provider for provider in providers if provider not in TEXT_ONLY_PROVIDERS]
+        providers = [
+            provider for provider in providers if provider not in TEXT_ONLY_PROVIDERS
+        ]
     return providers
 
 
@@ -35,7 +37,9 @@ def _build_llm(provider: str):
     return {"groq": get_groq_llm, "openai": get_openai_llm}[provider]()
 
 
-def invoke_llm_with_retry(structured_llm, messages, output_schema=None, allow_groq_fallback=True):
+def invoke_llm_with_retry(
+    structured_llm, messages, output_schema=None, allow_groq_fallback=True
+):
     """
     Invoca o LLM com fallback automático.
 
@@ -62,7 +66,9 @@ def invoke_llm_with_retry(structured_llm, messages, output_schema=None, allow_gr
         try:
             logger.info("Tentando %s...", provider)
             llm = _build_llm(provider)
-            candidate = llm.with_structured_output(output_schema) if output_schema else llm
+            candidate = (
+                llm.with_structured_output(output_schema) if output_schema else llm
+            )
             return candidate.invoke(messages)
         except Exception as err:
             if not _is_rate_limit_error(err):
