@@ -9,6 +9,7 @@ from src.core.llm import (
     _is_rate_limit_error,
     get_groq_llm,
     get_llm,
+    get_openai_llm,
     invoke_llm_with_retry,
 )
 
@@ -26,12 +27,7 @@ MESSAGES = [{"role": "user", "content": "analise isso"}]
 
 
 def _mock_llm(result=None, error=None):
-    """
-    Cria um LLM fake.
-
-    Se `error` for informado, tanto .invoke() quanto o structured output
-    levantam esse erro. Caso contrário, retornam `result`.
-    """
+    """Cria um LLM fake; com `error`, .invoke() e o structured output levantam esse erro."""
     llm = MagicMock()
     structured = MagicMock()
 
@@ -46,43 +42,39 @@ def _mock_llm(result=None, error=None):
     return llm
 
 
-class TestGetLlm:
-    """Factory do cliente Gemini."""
+class TestFactories:
+    """Fábricas dos clientes: um por provedor, com a chave lida do ambiente."""
 
-    @patch("src.core.llm.llm_gemini.ChatGoogleGenerativeAI")
-    def test_uses_primary_key_and_settings_by_default(self, mock_gemini):
-        get_llm()
+    def test_gemini_uses_settings_model_and_temperature(self):
+        llm = get_llm()
 
-        kwargs = mock_gemini.call_args.kwargs
-        assert kwargs["google_api_key"] == "test-gemini-key-1"
-        assert kwargs["model"] == "gemini-2.5-flash"
-        assert kwargs["temperature"] == 0.0
-        assert kwargs["timeout"] == 60
+        assert llm.provider == "gemini"
+        assert llm.model_name == "gemini-2.5-flash"
+        assert llm.temperature == 0.0
+        assert llm.model_kwargs["timeout"] == 60
 
-    @patch("src.core.llm.llm_gemini.ChatGoogleGenerativeAI")
-    def test_explicit_api_key_overrides_settings(self, mock_gemini):
-        get_llm(api_key="chave-alternativa")
+    def test_gemini_model_can_come_from_the_environment(self, monkeypatch):
+        monkeypatch.setenv("LLM_MODEL_GEMINI", "gemini-outro")
 
-        assert mock_gemini.call_args.kwargs["google_api_key"] == "chave-alternativa"
+        assert get_llm().model_name == "gemini-outro"
 
+    def test_groq_uses_the_current_default_model(self):
+        llm = get_groq_llm()
 
-class TestGetGroqLlm:
-    """Factory do cliente Groq (fallback)."""
+        assert llm.provider == "groq"
+        assert llm.model_name == "openai/gpt-oss-120b"
 
-    @patch("src.core.llm.llm_groq.ChatGroq")
-    def test_uses_primary_groq_key_by_default(self, mock_groq):
-        get_groq_llm()
+    def test_openai_model_comes_from_the_environment(self):
+        llm = get_openai_llm()
 
-        kwargs = mock_groq.call_args.kwargs
-        assert kwargs["api_key"] == "test-groq-key-1"
-        assert kwargs["model"] == "llama-3.3-70b-versatile"
-        assert kwargs["timeout"] == 60
+        assert llm.provider == "openai"
+        assert llm.model_name == "gpt-6-luna"
 
-    @patch("src.core.llm.llm_groq.ChatGroq")
-    def test_explicit_api_key_overrides_settings(self, mock_groq):
-        get_groq_llm(api_key="groq-alternativa")
+    def test_openai_without_model_fails_clearly(self, monkeypatch):
+        monkeypatch.delenv("LLM_MODEL_OPENAI")
 
-        assert mock_groq.call_args.kwargs["api_key"] == "groq-alternativa"
+        with pytest.raises(ValueError, match="LLM_MODEL_OPENAI"):
+            get_openai_llm()
 
 
 class TestIsRateLimitError:
@@ -108,16 +100,15 @@ class TestIsRateLimitError:
 
 
 class TestInvokeSuccessAndErrors:
-    """Comportamento da primeira tentativa (chave Gemini principal)."""
+    """Comportamento da primeira tentativa (Gemini)."""
 
-    def test_returns_result_from_primary_key(self):
+    def test_returns_result_from_primary(self):
         primary = _mock_llm(result="resultado-ok").with_structured_output(DummyOutput)
 
         assert invoke_llm_with_retry(primary, MESSAGES) == "resultado-ok"
 
-    @patch("src.core.llm.llm_retry.get_llm")
-    def test_does_not_fallback_when_error_is_not_rate_limit(self, mock_get_llm):
-        """Erro que não é de cota deve propagar sem consumir chaves extras."""
+    @patch("src.core.llm.llm_retry.get_groq_llm")
+    def test_does_not_fallback_when_error_is_not_rate_limit(self, mock_groq):
         primary = _mock_llm(error=ValueError("modelo inexistente")).with_structured_output(
             DummyOutput
         )
@@ -125,124 +116,71 @@ class TestInvokeSuccessAndErrors:
         with pytest.raises(ValueError, match="modelo inexistente"):
             invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
 
-        mock_get_llm.assert_not_called()
+        mock_groq.assert_not_called()
 
 
-class TestGeminiFallback:
-    """Fallback entre as chaves Gemini quando há estouro de cota."""
-
-    @patch("src.core.llm.llm_retry.get_llm")
-    def test_falls_back_to_second_gemini_key(self, mock_get_llm):
-        mock_get_llm.return_value = _mock_llm(result="ok-key2")
-        primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
-
-        result = invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
-
-        assert result == "ok-key2"
-        mock_get_llm.assert_called_once_with(api_key="test-gemini-key-2")
-
-    @patch("src.core.llm.llm_retry.get_llm")
-    def test_falls_back_to_third_gemini_key(self, mock_get_llm):
-        """Se a chave 2 também estourar, deve tentar a chave 3."""
-        mock_get_llm.side_effect = [
-            _mock_llm(error=RATE_LIMIT_ERROR),
-            _mock_llm(result="ok-key3"),
-        ]
-        primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
-
-        result = invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
-
-        assert result == "ok-key3"
-        assert mock_get_llm.call_count == 2
-
-    @patch("src.core.llm.llm_retry.get_llm")
-    def test_propagates_non_rate_limit_error_from_fallback(self, mock_get_llm):
-        mock_get_llm.return_value = _mock_llm(error=ValueError("chave inválida"))
-        primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
-
-        with pytest.raises(ValueError, match="chave inválida"):
-            invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
-
-    @patch("src.core.llm.llm_retry.get_llm")
-    def test_invokes_llm_directly_when_no_output_schema(self, mock_get_llm):
-        """Sem output_schema, o fallback usa o LLM cru (sem structured output)."""
-        fallback = _mock_llm(result="ok-cru")
-        mock_get_llm.return_value = fallback
-        primary = _mock_llm(error=RATE_LIMIT_ERROR)
-
-        result = invoke_llm_with_retry(primary, MESSAGES)
-
-        assert result == "ok-cru"
-        fallback.with_structured_output.assert_not_called()
-
-
+@patch("src.core.llm.llm_retry.get_openai_llm")
 @patch("src.core.llm.llm_retry.get_groq_llm")
-@patch("src.core.llm.llm_retry.get_llm")
-class TestGroqFallback:
-    """Fallback para o Groq depois que todas as chaves Gemini estouram."""
+class TestProviderFallback:
+    """Fallback entre provedores quando o Gemini estoura a cota."""
 
-    def test_uses_groq_when_all_gemini_keys_exhausted(self, mock_get_llm, mock_get_groq):
-        mock_get_llm.return_value = _mock_llm(error=RATE_LIMIT_ERROR)
-        mock_get_groq.return_value = _mock_llm(result="ok-groq")
+    def test_falls_back_to_groq_first_then_openai(self, mock_groq, mock_openai):
+        mock_groq.return_value = _mock_llm(result="ok-groq")
         primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
 
         result = invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
 
         assert result == "ok-groq"
-        mock_get_groq.assert_called_once_with(api_key="test-groq-key-1")
+        mock_openai.assert_not_called()
 
-    def test_falls_back_to_second_groq_key(self, mock_get_llm, mock_get_groq):
-        mock_get_llm.return_value = _mock_llm(error=RATE_LIMIT_ERROR)
-        mock_get_groq.side_effect = [
-            _mock_llm(error=RATE_LIMIT_ERROR),
-            _mock_llm(result="ok-groq2"),
-        ]
+    def test_falls_back_to_openai_when_groq_is_also_exhausted(self, mock_groq, mock_openai):
+        mock_groq.return_value = _mock_llm(error=RATE_LIMIT_ERROR)
+        mock_openai.return_value = _mock_llm(result="ok-openai")
         primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
 
         result = invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
 
-        assert result == "ok-groq2"
-        assert mock_get_groq.call_count == 2
+        assert result == "ok-openai"
 
-    def test_skips_groq_for_vision_calls(self, mock_get_llm, mock_get_groq):
+    def test_skips_text_only_providers_for_vision_calls(self, mock_groq, mock_openai):
         """Chamadas com imagem passam allow_groq_fallback=False (Groq não tem Vision)."""
-        mock_get_llm.return_value = _mock_llm(error=RATE_LIMIT_ERROR)
+        mock_openai.return_value = _mock_llm(result="ok-openai-vision")
         primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
 
-        with pytest.raises(Exception, match="rate limit"):
-            invoke_llm_with_retry(
-                primary,
-                MESSAGES,
-                output_schema=DummyOutput,
-                allow_groq_fallback=False,
-            )
+        result = invoke_llm_with_retry(
+            primary, MESSAGES, output_schema=DummyOutput, allow_groq_fallback=False
+        )
 
-        mock_get_groq.assert_not_called()
+        assert result == "ok-openai-vision"
+        mock_groq.assert_not_called()
 
-    def test_raises_when_every_provider_is_exhausted(self, mock_get_llm, mock_get_groq):
-        mock_get_llm.return_value = _mock_llm(error=RATE_LIMIT_ERROR)
-        mock_get_groq.return_value = _mock_llm(error=RATE_LIMIT_ERROR)
+    def test_follows_the_configured_provider_order(self, mock_groq, mock_openai, monkeypatch):
+        monkeypatch.setenv("LLM_PROVIDER_ORDER", "gemini,openai,groq")
+        mock_openai.return_value = _mock_llm(result="ok-openai")
         primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
 
-        with pytest.raises(Exception, match="rate limit"):
-            invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
+        assert invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput) == "ok-openai"
+        mock_groq.assert_not_called()
 
-    def test_propagates_non_rate_limit_error_from_groq(self, mock_get_llm, mock_get_groq):
-        mock_get_llm.return_value = _mock_llm(error=RATE_LIMIT_ERROR)
-        mock_get_groq.return_value = _mock_llm(error=ValueError("groq indisponível"))
-        primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
-
-        with pytest.raises(ValueError, match="groq indisponível"):
-            invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
-
-    def test_invokes_groq_directly_when_no_output_schema(self, mock_get_llm, mock_get_groq):
-        """Sem output_schema, o Groq é chamado sem structured output."""
-        mock_get_llm.return_value = _mock_llm(error=RATE_LIMIT_ERROR)
-        groq = _mock_llm(result="ok-groq-cru")
-        mock_get_groq.return_value = groq
+    def test_invokes_llm_directly_when_no_output_schema(self, mock_groq, mock_openai):
+        fallback = _mock_llm(result="ok-cru")
+        mock_groq.return_value = fallback
         primary = _mock_llm(error=RATE_LIMIT_ERROR)
 
-        result = invoke_llm_with_retry(primary, MESSAGES)
+        assert invoke_llm_with_retry(primary, MESSAGES) == "ok-cru"
+        fallback.with_structured_output.assert_not_called()
 
-        assert result == "ok-groq-cru"
-        groq.with_structured_output.assert_not_called()
+    def test_raises_when_every_provider_is_exhausted(self, mock_groq, mock_openai):
+        mock_groq.return_value = _mock_llm(error=RATE_LIMIT_ERROR)
+        mock_openai.return_value = _mock_llm(error=RATE_LIMIT_ERROR)
+        primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
+
+        with pytest.raises(Exception, match="rate limit"):
+            invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
+
+    def test_propagates_non_rate_limit_error_from_fallback(self, mock_groq, mock_openai):
+        mock_groq.return_value = _mock_llm(error=ValueError("chave inválida"))
+        primary = _mock_llm(error=RATE_LIMIT_ERROR).with_structured_output(DummyOutput)
+
+        with pytest.raises(ValueError, match="chave inválida"):
+            invoke_llm_with_retry(primary, MESSAGES, output_schema=DummyOutput)
