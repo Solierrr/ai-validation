@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.2.0](https://github.com/Solierrr/ai-validation/compare/v3.1.0...v3.2.0) (2026-10-17)
+
+
+### Features
+
+* add the local run commands ([4d1eb6e](https://github.com/Solierrr/ai-validation/commit/4d1eb6eafa4640cd7910f2b4d5896f96ba3f8a73))
+* read the llm keys from the environment and add openai ([#41](https://github.com/Solierrr/ai-validation/issues/41)) ([aeb6a14](https://github.com/Solierrr/ai-validation/commit/aeb6a14afa6759c53d348a03c8f71130d82d3e16))
+
 ## [3.1.0](https://github.com/Solierrr/ai-validation/compare/v3.0.0...v3.1.0) (2026-09-30)
 
 
