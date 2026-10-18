@@ -5,26 +5,19 @@ Utiliza pydantic-settings para carregar variáveis de ambiente do arquivo .env
 e disponibilizá-las de forma tipada e validada para o restante do projeto.
 """
 
-from functools import lru_cache
-
-from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
+from functools import lru_cache
 
 
 class Settings(BaseSettings):
     """
     Configurações da aplicação carregadas a partir de variáveis de ambiente.
 
-    As chaves de LLM (Gemini e Groq) ficam apenas no google-registry; o
-    serviço recebe a URL do registry e o token de consumidor.
+    O fallback entre provedores (Gemini, Groq, OpenAI) segue LLM_PROVIDER_ORDER.
     """
 
-    REGISTRY_URL: str = Field(
-        validation_alias=AliasChoices("REGISTRY_URL", "GOOGLE_REGISTRY_URL")
-    )  # URL base do google-registry (obrigatória)
-    REGISTRY_CONSUMER_TOKEN: (
-        str  # Token de consumidor do corretor de chaves (obrigatório)
-    )
+    # As chaves de LLM (GEMINI_API_KEY, GROQ_API_KEY, OPENAI_API_KEY) são lidas do ambiente pela
+    # solaria-lib (src/core/llm/keys.py); uma chave por provedor.
 
     LLM_MODEL: str = (
         "gemini-2.5-flash"  # Modelo atual com Vision e boa relação custo/performance

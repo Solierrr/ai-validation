@@ -11,7 +11,8 @@ Este repositório é Python. O processo local é sempre o mesmo: clonar, criar u
 ## Possíveis Impedimentos
 
 - **Python instalado localmente**, o `Dockerfile` usa a imagem `python:latest` e o workflow de CI (`.github/workflows/ci.yml`) roda sob Python `3.14`; recomenda-se usar essa versão localmente para evitar divergência de comportamento entre libs.
-- **google-registry (`REGISTRY_URL` e `REGISTRY_CONSUMER_TOKEN`)**, obrigatórios — os agentes de IA (validação de certificados e de CNPJ) pedem a chave do Gemini (e do Groq, no fallback) ao corretor de chaves do `google-registry` a cada chamada, via a lib `solaria-lib`. O serviço não guarda chaves de LLM; sem o registry acessível, os endpoints de validação falham ao processar.
+- **Chave de API do Gemini (`GEMINI_API_KEY`)**, obrigatória — os agentes de IA (validação de certificados e de CNPJ) chamam o Google Gemini via `langchain-google-genai`. Sem uma chave válida em `.env`, a aplicação sobe mas os endpoints de validação falham ao processar.
+- **Chave de API do Groq (`GROQ_API_KEY`)**, opcional — usada como fallback pelo cliente alternativo em `src/core/llm/llm_groq.py` (`src/core/config/settings.py` a define como `Optional`); a aplicação sobe normalmente sem ela.
 - **Acesso à internet para a BrasilAPI**, o fluxo de validação de CNPJ consulta `https://brasilapi.com.br/api/cnpj/v1/{cnpj}` em tempo real; sem conectividade de saída, esse endpoint retorna erro 502.
 - **Rate limiting ativo mesmo localmente**, o `slowapi` limita requisições por IP (10/min para certificados, 20/min para CNPJ) mesmo em ambiente de desenvolvimento — testes de carga local podem esbarrar nesse limite.
 
@@ -41,7 +42,7 @@ code . -r
   </a>
 </p>
 
-Crie um ambiente virtual antes de instalar as dependências, para não poluir o Python global da máquina. Depois de instalar, copie o `.env.example` para `.env` e preencha `REGISTRY_URL` e `REGISTRY_CONSUMER_TOKEN` (obrigatórias) antes de subir o servidor.
+Crie um ambiente virtual antes de instalar as dependências, para não poluir o Python global da máquina. Depois de instalar, copie o `.env.example` para `.env` e preencha `GEMINI_API_KEY` (obrigatória) antes de subir o servidor.
 
 ```Comandos para instalação de dependências
 python -m venv .venv
@@ -80,17 +81,4 @@ O `Dockerfile` do repositório instala as dependências e expõe a porta `8000`,
 ```Comandos para rodar via Docker
 docker build -t ai-validation .
 docker run --env-file .env -p 8000:8000 ai-validation
-```
-
-## Telemetria (OpenTelemetry)
-
-O serviço envia traces, métricas e logs por OTLP pelo wrapper `opentelemetry-instrument` (auto-instrumentação de FastAPI e `logging`), sem código na aplicação. Ele só é usado quando `OTEL_SDK_DISABLED=false`; sem isso o serviço sobe como antes. Para ver a telemetria localmente, suba o Grafana local com `make obs-up` no repositório `infra-otel-collector` (ver `docs-warehouse/helps/TRY-LOCAL.md`).
-
-```text
-OTEL_SDK_DISABLED=false
-OTEL_SERVICE_NAME=ai-validation
-OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
-OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
-OTEL_RESOURCE_ATTRIBUTES=service.namespace=solaria,deployment.environment=local
-OTEL_PYTHON_LOG_CORRELATION=true
 ```
