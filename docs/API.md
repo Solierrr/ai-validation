@@ -217,8 +217,7 @@ Variaveis de ambiente (`.env`):
 
 | Variavel | Obrigatoria | Default | Descricao |
 |----------|-------------|---------|-----------|
-| `REGISTRY_URL` | Sim | — | URL base do google-registry (corretor de chaves de LLM) |
-| `REGISTRY_CONSUMER_TOKEN` | Sim | — | Token de consumidor do corretor de chaves |
+| `GEMINI_API_KEY` | Sim | — | Chave da API do Google Gemini |
 | `LLM_MODEL` | Nao | `gemini-2.0-flash` | Modelo LLM a ser utilizado |
 | `LLM_TEMPERATURE` | Nao | `0.0` | Temperatura do modelo (0 = deterministico) |
 
@@ -232,7 +231,7 @@ pip install -r requirements.txt
 
 # Configurar variaveis de ambiente
 cp .env.example .env
-# Editar .env com REGISTRY_URL e REGISTRY_CONSUMER_TOKEN
+# Editar .env com sua GEMINI_API_KEY
 
 # Iniciar o servidor
 uvicorn main:app --reload --host 0.0.0.0 --port 8000

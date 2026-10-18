@@ -12,8 +12,11 @@ import os
 # ─── Variáveis de ambiente determinísticas para os testes ────────────────────
 # Variáveis de ambiente têm precedência sobre o arquivo .env no pydantic-settings,
 # então esses valores fake sobrescrevem qualquer .env presente localmente.
-os.environ["REGISTRY_URL"] = "http://registry.test"
-os.environ["REGISTRY_CONSUMER_TOKEN"] = "test-consumer-token"
+os.environ["GEMINI_API_KEY"] = "test-gemini-key-1"
+os.environ["GROQ_API_KEY"] = "test-groq-key-1"
+os.environ["OPENAI_API_KEY"] = "test-openai-key-1"
+os.environ["LLM_MODEL_OPENAI"] = "gpt-6-luna"
+os.environ["LLM_PROVIDER_ORDER"] = "gemini,groq,openai"
 os.environ["LLM_MODEL"] = "gemini-2.5-flash"
 os.environ["LLM_TEMPERATURE"] = "0.0"
 
