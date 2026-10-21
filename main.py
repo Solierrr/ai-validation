@@ -23,6 +23,7 @@ from src.api.routes.cnpj_routes import router as cnpj_router
 from src.api.routes.debug_routes import router as debug_router
 from src.api.routes.health_routes import router as health_router
 from src.core.config.settings import get_settings
+from src.api.routes.professional_routes import router as professional_router
 from src.core.logging.logging_config import configure_logging
 from src.otel_setup import configure_otel
 from src.version import VERSION
@@ -127,6 +128,8 @@ app.include_router(cnpj_router)
 app.include_router(health_router)
 # Rotas de debug (só para administradores; fora do OpenAPI)
 app.include_router(debug_router)
+# Validação de profissionais (cadastro profissional, chamada pelo api-core)
+app.include_router(professional_router)
 
 
 # ─── Contrato OpenAPI ────────────────────────────────────────────────────────
