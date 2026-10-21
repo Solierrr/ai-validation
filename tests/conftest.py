@@ -16,6 +16,7 @@ os.environ["REGISTRY_URL"] = "http://registry.test"
 os.environ["REGISTRY_CONSUMER_TOKEN"] = "test-consumer-token"
 os.environ["LLM_MODEL"] = "gemini-2.5-flash"
 os.environ["LLM_TEMPERATURE"] = "0.0"
+os.environ["CORS_ALLOWED_ORIGINS"] = "https://meuapp.com"
 
 import pytest  # noqa: E402
 

@@ -8,16 +8,18 @@ Este módulo configura:
 - Registro das rotas da API.
 """
 
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+import os
+
 from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from src.api.routes.certificate_routes import router
 from src.api.routes.cnpj_routes import router as cnpj_router
+from src.api.routes.professional_routes import router as professional_router
 from src.core.logging.logging_config import configure_logging
 
 # Carrega variáveis de ambiente do arquivo .env para o os.environ
@@ -52,10 +54,16 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Permite requisições de qualquer origem (ideal para dev; restringir em produção)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Restringir para domínios autorizados em produção
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[
+        origin.strip()
+        for origin in os.environ.get(
+            "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:5174,http://127.0.0.1:5174,https://web-sandbox-7ug0.onrender.com"
+        ).split(",")
+        if origin.strip()
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # ─── Rotas ───────────────────────────────────────────────────────────────────
@@ -63,6 +71,7 @@ app.add_middleware(
 app.include_router(router)
 # Rotas de validação de CNPJ de empresas parceiras (prefixo /api/v1)
 app.include_router(cnpj_router)
+app.include_router(professional_router)
 
 
 @app.get("/health", tags=["system"])
