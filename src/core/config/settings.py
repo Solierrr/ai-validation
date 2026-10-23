@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     )
     LLM_TEMPERATURE: float = 0.0  # Temperatura 0 = output determinístico
 
+    ENVIRONMENT: str = "LOCAL"  # Defina em QA e PROD; o padrão é LOCAL
+
+    DEBUG_ADMIN_SUBS: str = ""
+
+    # Validação do JWT de usuário (RS256/JWKS, emitido pelo api-auth)
+    JWT_JWKS_URL: str | None = None
+    JWT_ISSUER: str | None = None
+
     # Configuração do pydantic-settings: lê do arquivo .env na raiz do projeto
     # extra="ignore" permite ter variáveis extras no .env sem causar erro
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}

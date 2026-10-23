@@ -18,6 +18,7 @@ from slowapi.util import get_remote_address
 
 from src.api.routes.certificate_routes import router
 from src.api.routes.cnpj_routes import router as cnpj_router
+from src.api.routes.debug_routes import router as debug_router
 from src.core.logging.logging_config import configure_logging
 
 # Carrega variáveis de ambiente do arquivo .env para o os.environ
@@ -63,6 +64,8 @@ app.add_middleware(
 app.include_router(router)
 # Rotas de validação de CNPJ de empresas parceiras (prefixo /api/v1)
 app.include_router(cnpj_router)
+# Rotas de debug (só para administradores; fora do OpenAPI)
+app.include_router(debug_router)
 
 
 @app.get("/health", tags=["system"])
