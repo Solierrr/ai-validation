@@ -7,7 +7,7 @@ e extrair dados estruturados como nome do aluno, carga horária, etc.
 
 import base64
 import logging
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 from langchain_core.messages import HumanMessage
@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 class NRAgentOutput(BaseModel):
     """Schema de saída do agente NR-10."""
 
-    valid: bool = Field(description="Indica se o certificado atende a todos os critérios")
+    valid: bool = Field(
+        description="Indica se o certificado atende a todos os critérios"
+    )
     error_code: str | None = Field(
         default=None,
         description="Código de erro (ex: INSUFFICIENT_WORKLOAD, EXPIRED_CERTIFICATE, MISSING_STRUCTURE)",
@@ -55,7 +57,7 @@ class NRAgentOutput(BaseModel):
     )
 
 
-def nr10_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
+def nr10_agent_node(state: dict[str, Any]) -> dict[str, Any]:
     """
     Nó do agente NR-10 na pipeline LangGraph.
 
