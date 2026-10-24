@@ -32,8 +32,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/debug", tags=["debug"], include_in_schema=False)
 bearer_scheme = HTTPBearer(auto_error=False)
 
-# Lista de permitidos: um valor desconhecido (por exemplo "PRD" ou "staging") nega.
-# Em qualquer ambiente, incluindo PROD, só responde para os admins de DEBUG_ADMIN_SUBS.
 DEBUG_ALLOWED_ENVIRONMENTS = frozenset({"LOCAL", "DEV", "QA", "PROD"})
 _UUID = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
@@ -132,7 +130,6 @@ async def debug_validate_cnpj(
 ):
     await _authorize(credentials)
     collector = DebugTracker()
-    # O CNPJ não é grafo: a execução inteira vira uma etapa, com o agente de IA dentro.
     step = RunnableLambda(run_cnpj_validation, name="cnpj_validation")
     try:
         response = await step.ainvoke(

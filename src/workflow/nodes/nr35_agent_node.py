@@ -80,7 +80,7 @@ def nr35_agent_node(state: dict[str, Any]) -> dict[str, Any]:
             content_type = response.headers.get("content-type", "image/jpeg")
             mime_type = content_type.split(";")[0].strip()
             b64_data = base64.b64encode(response.content).decode("utf-8")
-        except Exception as e:  # noqa: BLE001 - fail-safe: qualquer falha vira rejeição
+        except Exception as e:
             logger.error("Failed to download NR-35 certificate: %s", e)
             return {
                 "nr35_result": {
@@ -122,7 +122,7 @@ def nr35_agent_node(state: dict[str, Any]) -> dict[str, Any]:
             output_schema=NR35AgentOutput,
             allow_groq_fallback=False,
         )
-    except Exception as e:  # noqa: BLE001 - fail-safe: qualquer falha vira rejeição
+    except Exception as e:
         logger.error("NR-35 agent LLM call failed: %s", e)
         return {
             "nr35_result": {

@@ -102,8 +102,6 @@ class _Clipper:
     def clean(self, value: Any) -> Any:
         if isinstance(value, str):
             too_long = len(value) > self.limit
-            # Corta antes de anonimizar: os padrões de PII têm custo quadrático em
-            # textos longos sem separadores. A folga evita deixar pedaço de PII na borda.
             value = mask_pii(value[: self.limit + _CLIP_MARGIN])
             if too_long or len(value) > self.limit:
                 self.clipped = True
@@ -148,7 +146,6 @@ def _completion_text(response: Any) -> str:
         text = _message_text(message)
         tool_calls = getattr(message, "tool_calls", None)
         if not text and tool_calls:
-            # Saída estruturada: o LLM responde pelos argumentos da tool call.
             return json.dumps(
                 [call.get("args") for call in tool_calls],
                 ensure_ascii=False,
