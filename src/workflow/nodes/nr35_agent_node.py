@@ -8,7 +8,7 @@ Estrutura idêntica ao NR-10 agent, com regras específicas da NR-35.
 
 import base64
 import logging
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 from langchain_core.messages import HumanMessage
@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 class NR35AgentOutput(BaseModel):
     """Schema de saída do agente NR-35."""
 
-    valid: bool = Field(description="Indica se o certificado atende a todos os critérios")
+    valid: bool = Field(
+        description="Indica se o certificado atende a todos os critérios"
+    )
     error_code: str | None = Field(
         default=None,
         description="Código de erro (ex: INSUFFICIENT_WORKLOAD, EXPIRED_CERTIFICATE, MISSING_STRUCTURE)",
@@ -55,7 +57,7 @@ class NR35AgentOutput(BaseModel):
     )
 
 
-def nr35_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
+def nr35_agent_node(state: dict[str, Any]) -> dict[str, Any]:
     """
     Nó do agente NR-35 na pipeline LangGraph.
 
@@ -78,7 +80,7 @@ def nr35_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
             content_type = response.headers.get("content-type", "image/jpeg")
             mime_type = content_type.split(";")[0].strip()
             b64_data = base64.b64encode(response.content).decode("utf-8")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - fail-safe: qualquer falha vira rejeição
             logger.error("Failed to download NR-35 certificate: %s", e)
             return {
                 "nr35_result": {
@@ -120,7 +122,7 @@ def nr35_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
             output_schema=NR35AgentOutput,
             allow_groq_fallback=False,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - fail-safe: qualquer falha vira rejeição
         logger.error("NR-35 agent LLM call failed: %s", e)
         return {
             "nr35_result": {

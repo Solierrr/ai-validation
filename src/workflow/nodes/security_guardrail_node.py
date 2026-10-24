@@ -15,7 +15,7 @@ no state para que os agentes NR-10 e NR-35 não precisem baixar novamente.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 from langchain_core.messages import HumanMessage
@@ -68,11 +68,12 @@ def _download_image(url: str) -> tuple[str, str]:
 
     # Converte bytes da imagem para base64 (formato esperado pelo Gemini Vision)
     import base64
+
     b64_data = base64.b64encode(response.content).decode("utf-8")
     return b64_data, mime_type
 
 
-def security_guardrail_node(state: Dict[str, Any]) -> Dict[str, Any]:
+def security_guardrail_node(state: dict[str, Any]) -> dict[str, Any]:
     """
     Nó do security guardrail na pipeline LangGraph.
 
@@ -88,7 +89,7 @@ def security_guardrail_node(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         nr10_b64, nr10_mime = _download_image(state["cert_nr10_url"])
         nr35_b64, nr35_mime = _download_image(state["cert_nr35_url"])
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - fail-safe: qualquer falha vira rejeição
         logger.error("Failed to download certificate images: %s", e)
         return {
             "is_safe": False,
@@ -133,7 +134,7 @@ def security_guardrail_node(state: Dict[str, Any]) -> Dict[str, Any]:
             output_schema=GuardrailOutput,
             allow_groq_fallback=False,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - fail-safe: qualquer falha vira rejeição
         # Em caso de falha total do LLM, assume que não é seguro (fail-safe)
         logger.error("Security guardrail LLM call failed: %s", e)
         return {
