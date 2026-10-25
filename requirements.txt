@@ -20,6 +20,7 @@ httpx
 slowapi
 rapidfuzz
 python-json-logger
+pyyaml
 pytest
 pytest-asyncio
 pytest-cov
