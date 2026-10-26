@@ -57,6 +57,13 @@ async def validate_cnpj(
     5. Envia CNAEs ao agente de IA para análise de compatibilidade.
     6. Retorna VALID ou INVALID com detalhes.
     """
+    return await run_cnpj_validation(payload)
+
+
+async def run_cnpj_validation(
+    payload: CNPJValidationRequest,
+) -> CNPJValidationResponse:
+    """Executa o fluxo de validação; compartilhado com a rota de debug."""
     # ─── 1. Sanitização ──────────────────────────────────────────────────────
     cnpj_clean = _sanitize_cnpj(payload.cnpj)
 

@@ -12,6 +12,11 @@ from src.core.llm.llm_openai import get_openai_llm
 
 logger = logging.getLogger(__name__)
 
+
+class ProvidersRateLimitedError(Exception):
+    """Todos os provedores de LLM atingiram rate limit e não há fallback."""
+
+
 # Groq só suporta texto; Gemini e OpenAI aceitam imagens (Vision).
 TEXT_ONLY_PROVIDERS = {"groq"}
 
@@ -75,7 +80,7 @@ def invoke_llm_with_retry(
                 raise
             logger.warning("%s também atingiu rate limit.", provider)
 
-    raise Exception(
+    raise ProvidersRateLimitedError(
         "Todos os provedores atingiram rate limit e não há fallback disponível. "
         "Tente novamente em alguns minutos."
     )

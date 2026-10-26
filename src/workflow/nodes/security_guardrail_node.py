@@ -15,7 +15,7 @@ no state para que os agentes NR-10 e NR-35 não precisem baixar novamente.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 from langchain_core.messages import HumanMessage
@@ -68,11 +68,12 @@ def _download_image(url: str) -> tuple[str, str]:
 
     # Converte bytes da imagem para base64 (formato esperado pelo Gemini Vision)
     import base64
+
     b64_data = base64.b64encode(response.content).decode("utf-8")
     return b64_data, mime_type
 
 
-def security_guardrail_node(state: Dict[str, Any]) -> Dict[str, Any]:
+def security_guardrail_node(state: dict[str, Any]) -> dict[str, Any]:
     """
     Nó do security guardrail na pipeline LangGraph.
 
