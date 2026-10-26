@@ -89,11 +89,83 @@ Os campos normais da rota equivalente mais `debug`:
   o resto da URL fica.
 - **PII:** CPF, CNPJ, telefone e e-mail viram `[CPF]`, `[CNPJ]`, `[TELEFONE]` e `[EMAIL]`
   em todo o bloco `debug`. Nome e endereço não são mascarados: use dados de teste.
-- **Tamanho:** cada texto é cortado em 4.000 caracteres e o bloco `debug` tem teto de
-  256 KB (os limites por campo diminuem até caber). Quando algo é cortado, `truncated` é
-  `true`. Se mesmo assim passar do teto, as entradas e os prompts são omitidos.
+- **Tamanho:** os prompts saem inteiros, sem limite. Os demais textos (entrada e saída
+  dos nós, resposta do LLM) são cortados em 4.000 caracteres; quando algo é cortado,
+  `truncated` é `true`.
 
-O debug existe só na resposta: nada é gravado.
+Nada é gravado em banco. Só as execuções de certificados ficam em memória por alguns
+minutos, para a reexecução de um nó (próxima seção).
+
+## Reexecutar um nó com prompts editados
+
+Cada chamada de LLM em `debug.nodes[].llm_calls[]` traz o prompt completo em `prompt`
+(lista de `{type, content, editable}`) e `prompt_complete`. Só as mensagens com
+`editable: true` podem ser trocadas, e só se `prompt_complete` for `true` (nada foi
+mascarado). Mensagens `system` são editáveis; no CNPJ, o prompt é uma única
+mensagem `human` (modelo de instruções com os dados da BrasilAPI) e também é editável.
+A parte `image_url` do prompt nunca é editável e nunca sai.
+
+### Certificados
+
+`POST /debug/certificates/validate` devolve `debug.run_id` e `debug.turn` (sempre `0`).
+Para reexecutar um nó, envie o mesmo corpo mais `custom`:
+
+```json
+{
+  "cert_nr10_url": "https://.../nr10.jpg",
+  "cert_nr35_url": "https://.../nr35.png",
+  "custom": {
+    "run_id": "<debug.run_id>",
+    "node": "nr10_agent",
+    "occurrence": 0,
+    "stop_after_node": true,
+    "prompts": [
+      { "call": 0, "prompt": [{ "type": "system", "content": "novo prompt" }, { "type": "human", "content": "[imagem omitida]" }] }
+    ]
+  }
+}
+```
+
+A rota restaura o estado que o nó recebeu na execução original (as imagens ficam no
+estado, então nada é baixado de novo), roda só esse nó com o prompt editado e para nele.
+A resposta traz `status`, `reason`, `error_code` e `extracted_data` como `null` e:
+
+```json
+{ "debug": { "nodes": [ { "node": "nr10_agent", "...": "..." } ],
+             "custom": { "run_id": "...", "node": "nr10_agent", "turn": 0, "occurrence": 0,
+                         "stopped": true, "overrides_applied": 1, "next": ["nr35_agent"] } } }
+```
+
+`overrides_applied` é quantas mensagens foram trocadas de fato. O `next` diz qual nó viria
+depois. Se o nó faz nova chamada ao LLM (rate limit e fallback de provedor), a edição vale
+para todas as chamadas dele.
+
+| Status | Quando |
+|---|---|
+| `404` | Execução expirada, de outro admin, reiniciada ou em outra instância; nó ou ocorrência inexistente |
+| `422` | Corpo inválido (`run_id` que não é UUID, `node` fora do padrão, `stop_after_node` diferente de `true`) ou nó que não pode ser reexecutado |
+| `500` | Falha no nó, com o `debug` parcial |
+
+As execuções ficam na memória da instância: no máximo 5 (as mais antigas saem primeiro),
+por 30 minutos, dentro de 64 MB de imagens. Com mais de uma réplica, a reexecução pode cair
+em uma instância que não tem a execução e responder `404`; mantenha o debug em uma só
+instância ou use afinidade de sessão. Cada reexecução deixa uma linha de log com o `sub`,
+o nó e a quantidade de prompts, sem o conteúdo.
+
+### CNPJ
+
+O CNPJ é um nó só (`cnpj_validation`): reexecutar é rodar o fluxo inteiro de novo com o
+prompt editado, então envie o CNPJ de novo com `custom`:
+
+```json
+{ "cnpj": "12.345.678/0001-90",
+  "custom": { "node": "cnpj_validation", "stop_after_node": true,
+              "prompts": [{ "call": 0, "prompt": [{ "type": "human", "content": "novo prompt" }] }] } }
+```
+
+A BrasilAPI é consultada de novo, então os dados da empresa podem ter mudado desde a
+execução original. A resposta traz o resultado normal e `debug.custom` com
+`next: []`. Como o fluxo inclui só a consulta e a análise do LLM, não há efeito fora do serviço.
 
 ## Variáveis
 

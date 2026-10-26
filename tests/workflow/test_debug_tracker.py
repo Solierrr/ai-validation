@@ -14,7 +14,6 @@ from src.workflow.nodes.security_guardrail_node import (
     GuardrailOutput,
     security_guardrail_node,
 )
-from src.workflow.observability import debug_tracker
 from src.workflow.observability.debug_tracker import DebugTracker, mask_pii
 from src.workflow.state import CertificateGraphState
 
@@ -125,20 +124,17 @@ def test_erro_no_no_fica_com_status_error():
     assert node["error"] == "RuntimeError: falhou"
 
 
-def test_teto_de_256_kb_marca_truncated(monkeypatch):
-    monkeypatch.setattr(debug_tracker, "MAX_TOTAL_BYTES", 3000)
-
+def test_nao_ha_teto_total_e_nenhum_no_perde_o_prompt():
     def no(state):
         return {"security_reason": "y" * 3000}
 
     debug = _run_graph(no, _state()).snapshot()
 
-    assert debug["truncated"] is True
-    assert len(json.dumps(debug, ensure_ascii=False).encode()) < 6000
+    assert len(json.dumps(debug, ensure_ascii=False).encode()) > 3000
+    assert debug["nodes"][0]["input"] is not None
 
 
-def test_texto_longo_sem_separadores_e_cortado_rapido():
-    """Os padrões de PII são quadráticos; o corte vem antes da anonimização."""
+def test_prompt_longo_sem_separadores_sai_inteiro_e_rapido():
     collector = DebugTracker()
     collector._orphan_llm.append({"prompt": "y" * 2_000_000})
 
@@ -146,4 +142,30 @@ def test_texto_longo_sem_separadores_e_cortado_rapido():
     snapshot = collector.snapshot()
 
     assert time.perf_counter() - inicio < 5
-    assert snapshot["truncated"] is True
+    assert len(snapshot["llm_calls_outside_nodes"][0]["prompt"]) == 2_000_000
+    assert snapshot["truncated"] is False
+
+
+async def test_prompt_grande_nao_e_descartado():
+    from langchain_core.messages import SystemMessage
+
+    tracker = DebugTracker()
+    meta = {"langgraph_node": "no"}
+    await tracker.on_chain_start({}, {}, run_id="n", metadata=meta, name="no")
+    await tracker.on_chat_model_start(
+        {}, [[SystemMessage(content="S" * 3_000_000)]], run_id="l", metadata=meta
+    )
+    await tracker.on_llm_end(_llm_ok("ok"), run_id="l")
+    await tracker.on_chain_end({}, run_id="n")
+
+    chamada = tracker.snapshot()["nodes"][0]["llm_calls"][0]
+
+    assert len(chamada["prompt"][0]["content"]) == 3_000_000
+    assert chamada["prompt_complete"] is True
+
+
+def _llm_ok(texto):
+    from langchain_core.messages import AIMessage
+    from langchain_core.outputs import ChatGeneration, LLMResult
+
+    return LLMResult(generations=[[ChatGeneration(message=AIMessage(content=texto))]])

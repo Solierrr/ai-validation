@@ -21,7 +21,7 @@ from src.workflow.nodes.security_guardrail_node import security_guardrail_node
 from src.workflow.state import CertificateGraphState
 
 
-def build_graph() -> StateGraph:
+def build_graph(checkpointer=None) -> StateGraph:
     """
     Constrói e compila o grafo LangGraph com todos os nós e arestas.
 
@@ -30,6 +30,9 @@ def build_graph() -> StateGraph:
         2. nr10_agent: Valida o certificado NR-10 via LLM Vision
         3. nr35_agent: Valida o certificado NR-35 via LLM Vision
         4. consolidation: Decisão final determinística (sem LLM)
+
+    `checkpointer` só é usado pelo modo debug (`InMemorySaver`), para reexecutar um nó
+    a partir do estado que ele recebeu; a rota pública compila sem ele.
 
     Retorna:
         Grafo compilado pronto para execução com .ainvoke()
@@ -63,7 +66,7 @@ def build_graph() -> StateGraph:
     workflow.add_edge("nr35_agent", "consolidation")  # Após NR-35, consolida resultados
     workflow.add_edge("consolidation", END)  # Consolidation encerra a pipeline
 
-    return workflow.compile()
+    return workflow.compile(checkpointer=checkpointer)
 
 
 # ─── Instância compilada do grafo (singleton) ────────────────────────────────
