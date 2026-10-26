@@ -15,9 +15,9 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.messages import BaseMessage
 from pydantic import BaseModel
 
+from src.workflow.observability.llm_dedupe import DuplicateRuns
+
 MAX_FIELD_CHARS = 4000
-MAX_TOTAL_BYTES = 256 * 1024
-_FIELD_LIMITS = (MAX_FIELD_CHARS, 1000, 250, 80)
 _CLIP_MARGIN = 256
 
 # Chaves do estado do grafo que valem a pena na entrada de um nó.
@@ -84,12 +84,27 @@ def _prompt_messages(messages: list[BaseMessage]) -> list[dict[str, str]]:
     return [_jsonable(message) for message in messages]
 
 
+_EMAIL_LINEAR = r"[a-zA-Z0-9_.+-]{1,64}@[a-zA-Z0-9-]{1,255}\.[a-zA-Z0-9-.]{1,255}"
+
+
 def mask_pii(text: str) -> str:
     text = _DATA_URI.sub(_IMAGE_OMITTED, text)
     text = _URL_QUERY.sub(r"\1?[omitido]", text)
     for kind, pattern in PII_PATTERNS:
+        if kind == "EMAIL":
+            pattern = _EMAIL_LINEAR
         text = re.sub(pattern, f"[{kind}]", text)
     return text
+
+
+def _whole(value: Any) -> Any:
+    if isinstance(value, str):
+        return mask_pii(value)
+    if isinstance(value, dict):
+        return {key: _whole(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_whole(item) for item in value]
+    return value
 
 
 class _Clipper:
@@ -112,6 +127,54 @@ class _Clipper:
         if isinstance(value, list):
             return [self.clean(item) for item in value]
         return value
+
+
+def _clean_editable_message(message: Any, clipper: _Clipper) -> tuple[Any, bool]:
+    content = message["content"]
+    if not isinstance(content, str):
+        return {**message, "editable": False}, False
+    text = mask_pii(content)
+    complete = text == content
+    if not complete:
+        clipper.clipped = True
+    return {
+        **message,
+        "content": text,
+        "editable": complete,
+    }, complete
+
+
+def _clean_call(
+    call: dict[str, Any], clipper: _Clipper, editable_types: tuple[str, ...]
+) -> dict[str, Any]:
+    prompt = call.get("prompt")
+    rest = {key: clipper.clean(value) for key, value in call.items() if key != "prompt"}
+    if not isinstance(prompt, list):
+        return {**rest, "prompt": _whole(prompt), "prompt_complete": False}
+    cleaned, complete = [], True
+    for message in prompt:
+        if isinstance(message, dict) and message.get("type") in editable_types:
+            kept, whole = _clean_editable_message(message, clipper)
+            cleaned.append(kept)
+            complete = complete and whole
+        else:
+            item = _whole(message)
+            cleaned.append(
+                {**item, "editable": False} if isinstance(item, dict) else item
+            )
+    return {**rest, "prompt": cleaned, "prompt_complete": complete}
+
+
+def _clean_node(
+    node: dict[str, Any], clipper: _Clipper, editable_types: tuple[str, ...]
+) -> dict[str, Any]:
+    cleaned = {
+        key: clipper.clean(value) for key, value in node.items() if key != "llm_calls"
+    }
+    cleaned["llm_calls"] = [
+        _clean_call(call, clipper, editable_types) for call in node["llm_calls"]
+    ]
+    return cleaned
 
 
 def _usage(response: Any) -> tuple[int | None, int | None, str | None]:
@@ -158,7 +221,9 @@ def _completion_text(response: Any) -> str:
 class DebugTracker(AsyncCallbackHandler):
     """Acumula, em memória e durante um turno, o que cada nó recebeu e devolveu."""
 
-    def __init__(self) -> None:
+    def __init__(self, editable_types: tuple[str, ...] = ("system",)) -> None:
+        self.editable_types = editable_types
+        self._dedupe = DuplicateRuns()
         self._nodes: list[dict[str, Any]] = []
         self._by_run: dict[Any, dict[str, Any]] = {}
         self._open_by_name: dict[str, dict[str, Any]] = {}
@@ -232,6 +297,9 @@ class DebugTracker(AsyncCallbackHandler):
     async def on_chat_model_start(
         self, serialized, messages, *, run_id, metadata=None, **kwargs
     ):
+        node = (metadata or {}).get("langgraph_node")
+        if self._dedupe.start(run_id, node, messages):
+            return
         flat = [m for group in messages for m in group]
         self._start_llm(run_id, _prompt_messages(flat), metadata)
 
@@ -261,6 +329,8 @@ class DebugTracker(AsyncCallbackHandler):
         (record["llm_calls"] if record else self._orphan_llm).append(call)
 
     async def on_llm_end(self, response, *, run_id, **kwargs):
+        if self._dedupe.finish(run_id):
+            return
         tokens_in, tokens_out, model = _usage(response)
         self._finish_llm(
             run_id,
@@ -273,27 +343,24 @@ class DebugTracker(AsyncCallbackHandler):
         )
 
     async def on_llm_error(self, error, *, run_id, **kwargs):
+        if self._dedupe.finish(run_id):
+            return
         self._finish_llm(run_id, {"error": f"{type(error).__name__}: {error}"})
 
     # --- resultado --------------------------------------------------------
     def snapshot(self) -> dict[str, Any]:
         """Estrutura final, anonimizada e dentro do teto de tamanho."""
         nodes = [dict(record) for record in self._nodes]
-        for limit in _FIELD_LIMITS:
-            clipper = _Clipper(limit)
-            body = {
-                "nodes": clipper.clean(nodes),
-                "llm_calls_outside_nodes": clipper.clean(self._orphan_llm),
-            }
-            size = len(json.dumps(body, ensure_ascii=False, default=str).encode())
-            if size <= MAX_TOTAL_BYTES:
-                break
-        if size > MAX_TOTAL_BYTES:
-            for node in body["nodes"]:
-                node["input"] = None
-                for call in node["llm_calls"]:
-                    call["prompt"] = None
-            body["llm_calls_outside_nodes"] = []
-        body["truncated"] = clipper.clipped or size > MAX_TOTAL_BYTES
+        clipper = _Clipper(MAX_FIELD_CHARS)
+        body = {
+            "nodes": [
+                _clean_node(node, clipper, self.editable_types) for node in nodes
+            ],
+            "llm_calls_outside_nodes": [
+                _clean_call(call, clipper, self.editable_types)
+                for call in self._orphan_llm
+            ],
+        }
+        body["truncated"] = clipper.clipped
         body["duration_ms"] = round((time.perf_counter() - self.started_at) * 1000, 1)
         return body

@@ -40,7 +40,7 @@ def _graph(result=None, error=None):
         graph.ainvoke.side_effect = error
     else:
         graph.ainvoke.return_value = result or ACCEPT_RESULT
-    return patch("src.api.routes.debug_routes.compiled_graph", graph)
+    return patch("src.api.routes.debug_routes.debug_graph", graph)
 
 
 class TestAccess:
