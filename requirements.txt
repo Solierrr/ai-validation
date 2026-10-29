@@ -18,6 +18,7 @@ fastapi
 uvicorn
 httpx
 slowapi
+pyjwt[crypto]
 rapidfuzz
 python-json-logger
 pytest

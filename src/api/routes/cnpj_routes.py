@@ -11,10 +11,11 @@ Endpoint POST /api/v1/companies/validate-cnpj que:
 import logging
 import re
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from src.api.auth import require_access_token
 from src.api.schemas.cnpj_schemas import CNPJValidationRequest, CNPJValidationResponse
 from src.agents.specialist.cnpj_agent.cnpj_agent import analyze_company
 from src.services.brasil_api import fetch_cnpj_data
@@ -23,7 +24,9 @@ logger = logging.getLogger(__name__)
 
 limiter = Limiter(key_func=get_remote_address)
 
-router = APIRouter(prefix="/api/v1", tags=["companies"])
+router = APIRouter(
+    prefix="/api/v1", tags=["companies"], dependencies=[Depends(require_access_token)]
+)
 
 
 def _sanitize_cnpj(cnpj: str) -> str:
