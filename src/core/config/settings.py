@@ -28,6 +28,10 @@ class Settings(BaseSettings):
 
     DEBUG_ADMIN_SUBS: str = ""
 
+    # Origens do navegador autorizadas a chamar a API (CORS), separadas por vírgula.
+    # Em QA e PROD vêm do ambiente; o padrão cobre só o desenvolvimento local.
+    CORS_ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+
     # Validação do JWT de usuário (RS256/JWKS, emitido pelo api-auth)
     JWT_JWKS_URL: str | None = None
     JWT_ISSUER: str | None = None

@@ -18,6 +18,7 @@ from slowapi.util import get_remote_address
 from src.api.routes.certificate_routes import router
 from src.api.routes.cnpj_routes import router as cnpj_router
 from src.api.routes.debug_routes import router as debug_router
+from src.core.config.settings import get_settings
 from src.core.logging.logging_config import configure_logging
 
 # Carrega variáveis de ambiente do arquivo .env para o os.environ
@@ -48,14 +49,21 @@ app.state.limiter = limiter
 # Handler customizado que retorna HTTP 429 quando o limite é excedido
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+def cors_origins(raw: str) -> list[str]:
+    """Converte a lista separada por vírgula de CORS_ALLOWED_ORIGINS em origens."""
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
 # ─── CORS Middleware ─────────────────────────────────────────────────────────
-# Permite requisições de qualquer origem (ideal para dev; restringir em produção)
+# Só as origens de CORS_ALLOWED_ORIGINS chamam a API pelo navegador. A autenticação
+# vai no header Authorization, sem cookies.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Restringir para domínios autorizados em produção
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=cors_origins(get_settings().CORS_ALLOWED_ORIGINS),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # ─── Rotas ───────────────────────────────────────────────────────────────────
