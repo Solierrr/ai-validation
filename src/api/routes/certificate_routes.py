@@ -8,10 +8,11 @@ URLs de certificados NR-10 e NR-35 e executa a pipeline multi-agente.
 import logging
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from src.api.auth import require_access_token
 from src.api.schemas.certificate_schemas import (
     CertificateValidationRequest,
     CertificateValidationResponse,
@@ -24,7 +25,9 @@ logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 # Router com prefixo /api/v1 — todas as rotas aqui ficam sob esse path
-router = APIRouter(prefix="/api/v1", tags=["certificates"])
+router = APIRouter(
+    prefix="/api/v1", tags=["certificates"], dependencies=[Depends(require_access_token)]
+)
 
 
 @router.post(

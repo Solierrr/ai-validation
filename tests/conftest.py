@@ -19,6 +19,8 @@ os.environ["LLM_MODEL_OPENAI"] = "gpt-6-luna"
 os.environ["LLM_PROVIDER_ORDER"] = "gemini,groq,openai"
 os.environ["LLM_MODEL"] = "gemini-2.5-flash"
 os.environ["LLM_TEMPERATURE"] = "0.0"
+os.environ["AUTH_REQUIRED"] = "false"
+os.environ["CORS_ALLOWED_ORIGINS"] = "https://app.exemplo.com"
 
 import pytest  # noqa: E402
 
