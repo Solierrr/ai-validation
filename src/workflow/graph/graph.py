@@ -59,9 +59,9 @@ def build_graph() -> StateGraph:
     )
 
     # ─── Arestas sequenciais: fluxo linear entre os agentes ─────────────────
-    workflow.add_edge("nr10_agent", "nr35_agent")      # Após NR-10, executa NR-35
-    workflow.add_edge("nr35_agent", "consolidation")   # Após NR-35, consolida resultados
-    workflow.add_edge("consolidation", END)            # Consolidation encerra a pipeline
+    workflow.add_edge("nr10_agent", "nr35_agent")  # Após NR-10, executa NR-35
+    workflow.add_edge("nr35_agent", "consolidation")  # Após NR-35, consolida resultados
+    workflow.add_edge("consolidation", END)  # Consolidation encerra a pipeline
 
     return workflow.compile()
 

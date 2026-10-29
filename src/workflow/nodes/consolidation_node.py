@@ -12,8 +12,8 @@ e aplica regras de negócio determinísticas para tomar a decisão final:
 A decisão é sempre ACCEPT ou REJECTED, sem margem para ambiguidade.
 """
 
-from datetime import date, timedelta
-from typing import Any, Dict
+from datetime import date
+from typing import Any
 
 from rapidfuzz import fuzz
 
@@ -21,7 +21,7 @@ from rapidfuzz import fuzz
 MAX_CERTIFICATE_AGE_DAYS = 730
 
 
-def consolidation_node(state: Dict[str, Any]) -> Dict[str, Any]:
+def consolidation_node(state: dict[str, Any]) -> dict[str, Any]:
     """
     Nó de consolidação — toma a decisão final de forma determinística.
 

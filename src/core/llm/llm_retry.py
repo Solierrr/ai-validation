@@ -75,7 +75,7 @@ def invoke_llm_with_retry(
                 raise
             logger.warning("%s também atingiu rate limit.", provider)
 
-    raise Exception(
+    raise RuntimeError(
         "Todos os provedores atingiram rate limit e não há fallback disponível. "
         "Tente novamente em alguns minutos."
     )
