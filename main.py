@@ -20,6 +20,7 @@ from src.api.routes.certificate_routes import router
 from src.api.routes.cnpj_routes import router as cnpj_router
 from src.core.config.settings import get_settings
 from src.core.logging.logging_config import configure_logging
+from src.otel_setup import configure_otel
 
 # Carrega variáveis de ambiente do arquivo .env para o os.environ
 load_dotenv()
@@ -82,3 +83,5 @@ async def health_check():
     Usado por load balancers e ferramentas de monitoramento.
     """
     return {"status": "healthy"}
+
+configure_otel(app, "ai-validation")
