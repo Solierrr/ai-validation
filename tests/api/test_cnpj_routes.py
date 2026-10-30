@@ -192,12 +192,18 @@ class TestExternalFailures:
         with _mocks(fetch_error=RuntimeError("429 Too Many Requests")):
             response = client.post(ENDPOINT, json={"cnpj": CNPJ_FORMATTED})
 
+        body = response.json()
         assert response.status_code == 502
-        assert "Receita Federal" in response.json()["detail"]
+        assert body["errorCode"] == "DEPENDENCY_UNAVAILABLE"
+        assert "Receita Federal" in body["detail"]
+        assert "Too Many Requests" not in body["detail"]
 
     def test_returns_500_when_agent_fails(self, client, company_data):
         with _mocks(company_data=company_data, audit_error=RuntimeError("keys estouradas")):
             response = client.post(ENDPOINT, json={"cnpj": CNPJ_FORMATTED})
 
+        body = response.json()
         assert response.status_code == 500
-        assert "compatibilidade" in response.json()["detail"].lower()
+        assert body["errorCode"] == "INTERNAL_ERROR"
+        assert "compatibilidade" in body["detail"].lower()
+        assert "keys estouradas" not in body["detail"]

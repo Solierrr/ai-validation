@@ -82,7 +82,7 @@ def nr10_agent_node(state: dict[str, Any]) -> dict[str, Any]:
             content_type = response.headers.get("content-type", "image/jpeg")
             mime_type = content_type.split(";")[0].strip()
             b64_data = base64.b64encode(response.content).decode("utf-8")
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             # Se falhar o download, retorna erro sem chamar o LLM
             logger.error("Failed to download NR-10 certificate: %s", e)
             return {
@@ -129,7 +129,7 @@ def nr10_agent_node(state: dict[str, Any]) -> dict[str, Any]:
             output_schema=NRAgentOutput,
             allow_groq_fallback=False,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         # Após 3 falhas, retorna erro estruturado
         logger.error("NR-10 agent LLM call failed: %s", e)
         return {

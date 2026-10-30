@@ -8,15 +8,17 @@ URLs de certificados NR-10 e NR-35 e executa a pipeline multi-agente.
 import logging
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from src.api.auth import require_access_token
+from src.api.errors import ApiError
 from src.api.schemas.certificate_schemas import (
     CertificateValidationRequest,
     CertificateValidationResponse,
 )
+from src.api.schemas.problem_schemas import problem_responses
 from src.workflow.graph.graph import compiled_graph
 
 logger = logging.getLogger(__name__)
@@ -26,19 +28,25 @@ limiter = Limiter(key_func=get_remote_address)
 
 # Router com prefixo /api/v1 — todas as rotas aqui ficam sob esse path
 router = APIRouter(
-    prefix="/api/v1", tags=["certificates"], dependencies=[Depends(require_access_token)]
+    prefix="/api/v1", tags=["Certificados"], dependencies=[Depends(require_access_token)]
 )
 
 
 @router.post(
     "/certificates/validate",
     response_model=CertificateValidationResponse,
-    summary="Validate NR-10 and NR-35 certificates",
+    summary="Valida os certificados NR-10 e NR-35 de um profissional",
     description=(
-        "Receives URLs for NR-10 and NR-35 certificate images, "
-        "runs the multi-agent validation pipeline, and returns "
-        "an ACCEPT or REJECTED decision."
+        "Recebe as URLs das imagens dos certificados NR-10 e NR-35, roda a pipeline "
+        "multi-agente e devolve ACCEPT ou REJECTED. Certificado reprovado é resultado "
+        "(status REJECTED com error_code), não erro HTTP. Exige o JWT do usuário, emitido pelo api-auth, e é limitada a "
+        "10 requisições por minuto por IP."
     ),
+    operation_id="validateCertificates",
+    responses=problem_responses(401, 422, 429, 500),
+    openapi_extra={
+        "x-error-codes": ["UNAUTHENTICATED", "VALIDATION_FAILED", "RATE_LIMITED", "INTERNAL_ERROR"],
+    },
 )
 @limiter.limit("10/minute")  # Máximo 10 validações por minuto por IP
 async def validate_certificates(
@@ -64,13 +72,10 @@ async def validate_certificates(
     try:
         # Executa a pipeline de validação de forma assíncrona
         result = await compiled_graph.ainvoke(initial_state)
-    except Exception as e:
+    except Exception:
         # Loga o traceback completo e retorna erro genérico ao cliente
         logger.exception("Certificate validation pipeline failed")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erro interno na pipeline de validação: {e}",
-        )
+        raise ApiError(500, "INTERNAL_ERROR", "Erro interno na pipeline de validação dos certificados.")
 
     # Monta a resposta a partir do resultado da pipeline
     return CertificateValidationResponse(

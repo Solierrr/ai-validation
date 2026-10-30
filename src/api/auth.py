@@ -9,6 +9,7 @@ from src.core.config.settings import get_settings
 from src.core.security.jwt import is_valid_access_token
 
 bearer_scheme = HTTPBearer(
+    scheme_name="bearerAuth",
     auto_error=False,
     bearerFormat="JWT",
     description="Access token JWT emitido pelo api-auth.",
