@@ -6,7 +6,7 @@ import time
 from unittest.mock import patch
 
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableLambda
 from langgraph.graph import END, START, StateGraph
 
@@ -169,3 +169,83 @@ def _llm_ok(texto):
     from langchain_core.outputs import ChatGeneration, LLMResult
 
     return LLMResult(generations=[[ChatGeneration(message=AIMessage(content=texto))]])
+
+
+def _meta(node):
+    return {"langgraph_node": node}
+
+
+async def _abrir(tracker, node, run_id, parent_run_id=None, name=None):
+    await tracker.on_chain_start(
+        {}, {}, run_id=run_id, parent_run_id=parent_run_id, metadata=_meta(node), name=name or node
+    )
+
+
+def test_tool_chamada_fica_no_no_com_entrada_saida_e_tempo():
+    tracker = DebugTracker()
+
+    async def cenario():
+        await _abrir(tracker, "cnpj_agent", "n1")
+        await tracker.on_tool_start(
+            {"name": "consultar_cnpj"},
+            "x",
+            run_id="t1",
+            metadata=_meta("cnpj_agent"),
+            inputs={"cnpj": "12.345.678/0001-90"},
+        )
+        await tracker.on_tool_end(
+            ToolMessage(content="Empresa ativa, ana@exemplo.com", tool_call_id="c1"), run_id="t1"
+        )
+
+    asyncio.run(cenario())
+    node = tracker.snapshot()["nodes"][0]
+    call = node["tool_calls"][0]
+
+    assert call["name"] == "consultar_cnpj"
+    assert call["input"] == {"cnpj": "[CNPJ]"}
+    assert call["output"] == "Empresa ativa, [EMAIL]"
+    assert call["status"] == "ok"
+    assert [tool["name"] for tool in node["tools"]] == ["consultar_cnpj"]
+
+
+def test_tool_com_erro_e_tool_fora_de_no():
+    tracker = DebugTracker()
+
+    async def cenario():
+        await _abrir(tracker, "nr10_agent", "n1")
+        await tracker.on_tool_start({"name": "ler_certificado"}, "x", run_id="t1", metadata=_meta("nr10_agent"))
+        await tracker.on_tool_error(TimeoutError("sem resposta"), run_id="t1")
+        await tracker.on_chain_end({}, run_id="n1")
+        await tracker.on_tool_start({"name": "solta"}, "x", run_id="t2", metadata=_meta("tools"))
+        await tracker.on_tool_end("ok", run_id="t2")
+
+    asyncio.run(cenario())
+    debug = tracker.snapshot()
+
+    assert debug["nodes"][0]["tool_calls"][0]["status"] == "error"
+    assert debug["nodes"][0]["tool_calls"][0]["error"] == "TimeoutError: sem resposta"
+    assert [call["name"] for call in debug["tool_calls_outside_nodes"]] == ["solta"]
+
+
+def test_tools_disponiveis_e_propagacao_para_o_no_do_agente():
+    tracker = DebugTracker()
+
+    async def cenario():
+        await _abrir(tracker, "nr35_agent", "externo")
+        await _abrir(tracker, "model", "modelo", parent_run_id="externo")
+        await tracker.on_chat_model_start(
+            {},
+            [[HumanMessage(content="oi")]],
+            run_id="l1",
+            parent_run_id="modelo",
+            metadata=_meta("model"),
+            invocation_params={
+                "tools": [{"type": "function", "function": {"name": "ler_certificado", "description": "Lê."}}]
+            },
+        )
+
+    asyncio.run(cenario())
+    nodes = {node["node"]: node for node in tracker.snapshot()["nodes"]}
+
+    assert nodes["nr35_agent"]["tools"] == [{"name": "ler_certificado", "description": "Lê."}]
+    assert nodes["model"]["tools"] == [{"name": "ler_certificado", "description": "Lê."}]
