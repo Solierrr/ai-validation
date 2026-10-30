@@ -19,6 +19,7 @@ from langchain_core.runnables import RunnableLambda
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import BaseModel, Field, field_validator
 
+from src.api.errors import ApiError
 from src.api.routes.cnpj_routes import run_cnpj_validation
 from src.api.schemas.certificate_schemas import (
     CertificateValidationRequest,
@@ -301,6 +302,10 @@ async def debug_validate_cnpj(
         )
     except HTTPException as error:
         return _failure(error.status_code, str(error.detail), collector)
+    except ApiError as error:
+        # Só administradores veem o debug: a causa original ajuda a investigar
+        cause = f": {error.__cause__}" if error.__cause__ else ""
+        return _failure(error.status, f"{error.detail}{cause}", collector)
     except Exception as error:
         logger.exception("Falha na execução de debug do CNPJ")
         return _failure(500, f"{type(error).__name__}: {error}", collector)

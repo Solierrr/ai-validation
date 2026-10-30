@@ -52,7 +52,7 @@ copy .env.example .env
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-A aplicação sobe em `http://localhost:8000`. O health check fica em `GET /health` e a documentação interativa (Swagger) em `http://localhost:8000/docs`.
+A aplicação sobe em `http://localhost:8000`. O serviço responde vivo em `GET /health` e pronto em `GET /ready`; a documentação interativa (Swagger) fica em `http://localhost:8000/docs` e o contrato em `http://localhost:8000/openapi.json`.
 
 ### Rodando os testes
 

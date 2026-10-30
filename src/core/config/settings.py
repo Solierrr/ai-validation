@@ -5,8 +5,11 @@ Utiliza pydantic-settings para carregar variáveis de ambiente do arquivo .env
 e disponibilizá-las de forma tipada e validada para o restante do projeto.
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+
+SERVICE_KEY_MIN_LENGTH = 32
 
 
 class Settings(BaseSettings):
@@ -24,6 +27,23 @@ class Settings(BaseSettings):
     )
     LLM_TEMPERATURE: float = 0.0  # Temperatura 0 = output determinístico
 
+    # Liga o Swagger (/docs) e o contrato (/openapi.json); desligado em PROD
+    DOCS_ENABLED: bool = True
+
+    # Chaves de serviço dos chamadores aceitos (cabeçalho X-Service-Key); vazia recusa o chamador
+    SERVICE_KEY_API_CORE: str = ""
+
+    @field_validator("SERVICE_KEY_API_CORE")
+    @classmethod
+    def _check_service_key_length(cls, value: str) -> str:
+        if value and len(value) < SERVICE_KEY_MIN_LENGTH:
+            raise ValueError(f"a chave de serviço precisa de ao menos {SERVICE_KEY_MIN_LENGTH} caracteres")
+        return value
+
+    @property
+    def service_keys(self) -> dict[str, str]:
+        """Mapa chamador -> chave esperada, a partir de SERVICE_KEY_<CHAMADOR>."""
+        return {"api-core": self.SERVICE_KEY_API_CORE}
     ENVIRONMENT: str = "LOCAL"  # Defina em QA e PROD; o padrão é LOCAL
 
     DEBUG_ADMIN_SUBS: str = ""

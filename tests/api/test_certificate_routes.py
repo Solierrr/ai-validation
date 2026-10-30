@@ -117,8 +117,12 @@ class TestErrorHandling:
 
         response = client.post(ENDPOINT, json=VALID_PAYLOAD)
 
+        body = response.json()
         assert response.status_code == 500
-        assert "pipeline" in response.json()["detail"].lower()
+        assert response.headers["content-type"] == "application/problem+json"
+        assert body["errorCode"] == "INTERNAL_ERROR"
+        assert "pipeline" in body["detail"].lower()
+        assert "LLM timeout" not in body["detail"]
 
 
 class TestRateLimiting:
@@ -140,3 +144,7 @@ class TestRateLimiting:
 
         assert statuses[:10] == [200] * 10
         assert statuses[10] == 429
+
+        response = client.post(ENDPOINT, json=VALID_PAYLOAD)
+        assert response.headers["content-type"] == "application/problem+json"
+        assert response.json()["errorCode"] == "RATE_LIMITED"

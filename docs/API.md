@@ -7,7 +7,9 @@ Plataforma de validacao automatizada com IA, composta por dois fluxos:
 2. **CNPJ de Empresas** — validacao de compatibilidade de atividades econômicas.
 
 **Base URL:** `http://localhost:8000`  
-**Versao:** `1.1.0`
+**Versao:** a do release, lida do `version.txt`
+
+O contrato completo e gerado do codigo: `GET /openapi.json` (Swagger em `/docs`, desligados com `DOCS_ENABLED=false`) e `openapi.yaml` na raiz, exportado por `make openapi`.
 
 ---
 
@@ -30,14 +32,53 @@ O navegador envia o preflight `OPTIONS` com o header `Authorization`; ele so e r
 
 ### `GET /health`
 
-Health check do servico.
+Indica se o processo esta vivo. Rota publica.
 
-**Tags:** `system`
+**Tags:** `Saúde`
 
 **Resposta 200:**
 ```json
 {
-  "status": "healthy"
+  "status": "UP",
+  "version": "3.1.0"
+}
+```
+
+### `GET /ready`
+
+Indica se o servico esta pronto para atender. O servico nao tem banco nem cache; os provedores de LLM (com fallback) e a BrasilAPI ficam fora do pronto. Rota publica.
+
+**Tags:** `Saúde`
+
+**Resposta 200:**
+```json
+{
+  "status": "UP"
+}
+```
+
+---
+
+## Erros HTTP
+
+Todo erro HTTP responde `application/problem+json` no contrato de erro da organizacao. Documento ou CNPJ reprovado nao e erro: volta 200 com `status` `REJECTED` ou `INVALID` e o `error_code` da tabela de cada fluxo.
+
+| Status | `errorCode` | Quando |
+|--------|-------------|--------|
+| 422 | `VALIDATION_FAILED` | corpo invalido (detalhes em `errors`) |
+| 429 | `RATE_LIMITED` | limite de requisicoes por IP atingido |
+| 500 | `INTERNAL_ERROR` | falha inesperada na pipeline ou no agente |
+| 502 | `DEPENDENCY_UNAVAILABLE` | falha na consulta a BrasilAPI |
+
+```json
+{
+  "type": "about:blank",
+  "title": "DEPENDENCY_UNAVAILABLE",
+  "status": 502,
+  "errorCode": "DEPENDENCY_UNAVAILABLE",
+  "detail": "Erro ao consultar dados do CNPJ na Receita Federal.",
+  "instance": "/api/v1/companies/validate-cnpj",
+  "timestamp": "2026-10-25T13:45:00+00:00"
 }
 ```
 
@@ -49,7 +90,7 @@ Health check do servico.
 
 Valida certificados NR-10 e NR-35 atraves da pipeline multi-agente com LLM Vision.
 
-**Tags:** `certificates`  
+**Tags:** `Certificados`  
 **Rate Limit:** 10 requests/minuto por IP
 
 #### Request Body
@@ -134,7 +175,7 @@ Valida certificados NR-10 e NR-35 atraves da pipeline multi-agente com LLM Visio
 
 Valida se uma empresa parceira possui atividades economicas compativeis com o setor solar/eletrico.
 
-**Tags:** `companies`  
+**Tags:** `Empresas`  
 **Rate Limit:** 20 requests/minuto por IP
 
 #### Request Body
@@ -216,13 +257,7 @@ Valida se uma empresa parceira possui atividades economicas compativeis com o se
 
 #### Response (502 Bad Gateway)
 
-Retornado quando a consulta a BrasilAPI falha.
-
-```json
-{
-  "detail": "Erro ao consultar dados do CNPJ na Receita Federal: <mensagem>"
-}
-```
+Retornado quando a consulta a BrasilAPI falha, com `errorCode` `DEPENDENCY_UNAVAILABLE` (ver [Erros HTTP](#erros-http)).
 
 ---
 
@@ -235,6 +270,8 @@ Variaveis de ambiente (`.env`):
 | `GEMINI_API_KEY` | Sim | — | Chave da API do Google Gemini |
 | `LLM_MODEL` | Nao | `gemini-2.0-flash` | Modelo LLM a ser utilizado |
 | `LLM_TEMPERATURE` | Nao | `0.0` | Temperatura do modelo (0 = deterministico) |
+| `DOCS_ENABLED` | Nao | `true` | Liga o Swagger (`/docs`) e o contrato (`/openapi.json`); `false` em PROD |
+| `SERVICE_KEY_API_CORE` | Nao | vazio | Chave de servico do `api-core` (cabecalho `X-Service-Key`, minimo de 32 caracteres); vazia recusa o chamador |
 
 ---
 
