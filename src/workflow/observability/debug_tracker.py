@@ -218,6 +218,39 @@ def _completion_text(response: Any) -> str:
     return str(getattr(generation, "text", ""))
 
 
+def _tool_output(output: Any) -> Any:
+    if isinstance(output, BaseMessage):
+        return _message_text(output)
+    return _jsonable(output)
+
+
+def _tool_spec(tool: Any) -> dict[str, str] | None:
+    if not isinstance(tool, dict):
+        return None
+    spec = tool.get("function") if isinstance(tool.get("function"), dict) else tool
+    name = spec.get("name")
+    if not isinstance(name, str) or not name:
+        return None
+    description = spec.get("description")
+    return {
+        "name": name,
+        "description": description if isinstance(description, str) else "",
+    }
+
+
+def _available_tools(kwargs: dict[str, Any]) -> list[dict[str, str]]:
+    params = kwargs.get("invocation_params") or {}
+    raw = params.get("tools") or params.get("functions") or []
+    found: list[dict[str, str]] = []
+    for item in raw if isinstance(raw, list) else []:
+        group = item.get("function_declarations") if isinstance(item, dict) else None
+        for tool in group if isinstance(group, list) else [item]:
+            spec = _tool_spec(tool)
+            if spec:
+                found.append(spec)
+    return found
+
+
 class DebugTracker(AsyncCallbackHandler):
     """Acumula, em memória e durante um turno, o que cada nó recebeu e devolveu."""
 
@@ -230,6 +263,10 @@ class DebugTracker(AsyncCallbackHandler):
         self._starts: dict[Any, float] = {}
         self._llm_runs: dict[Any, dict[str, Any]] = {}
         self._orphan_llm: list[dict[str, Any]] = []
+        self._tool_runs: dict[Any, dict[str, Any]] = {}
+        self._orphan_tools: list[dict[str, Any]] = []
+        self._parent_of: dict[Any, Any] = {}
+        self._record_of: dict[Any, dict[str, Any]] = {}
         self.started_at = time.perf_counter()
 
     # --- nós do grafo -----------------------------------------------------
@@ -251,6 +288,7 @@ class DebugTracker(AsyncCallbackHandler):
         **kwargs,
     ):
         name = name or (serialized or {}).get("name")
+        self._parent_of[run_id] = parent_run_id
         if not self._is_node_run(name, metadata) or name in self._open_by_name:
             return
         record = {
@@ -262,10 +300,13 @@ class DebugTracker(AsyncCallbackHandler):
             "input": _node_input(inputs),
             "output": None,
             "llm_calls": [],
+            "tools": [],
+            "tool_calls": [],
             "error": None,
         }
         self._nodes.append(record)
         self._by_run[run_id] = record
+        self._record_of[run_id] = record
         self._open_by_name[name] = record
         self._starts[run_id] = time.perf_counter()
 
@@ -298,6 +339,7 @@ class DebugTracker(AsyncCallbackHandler):
         self, serialized, messages, *, run_id, metadata=None, **kwargs
     ):
         node = (metadata or {}).get("langgraph_node")
+        self._register_tools(node, kwargs)
         if self._dedupe.start(run_id, node, messages):
             return
         flat = [m for group in messages for m in group]
@@ -347,6 +389,71 @@ class DebugTracker(AsyncCallbackHandler):
             return
         self._finish_llm(run_id, {"error": f"{type(error).__name__}: {error}"})
 
+    # --- tools ------------------------------------------------------------
+    def _owners(self, node: str | None, parent_run_id: Any) -> list[dict[str, Any]]:
+        found: list[dict[str, Any]] = []
+        seen: set[Any] = set()
+        current = parent_run_id
+        while current is not None and current not in seen:
+            seen.add(current)
+            record = self._record_of.get(current)
+            if record is not None and all(record is not other for other in found):
+                found.append(record)
+            current = self._parent_of.get(current)
+        if not found:
+            record = self._open_by_name.get(node or "")
+            if record is None and self._open_by_name:
+                record = next(reversed(self._open_by_name.values()))
+            if record is not None:
+                found.append(record)
+        return found
+
+    def _register_tools(self, node: str | None, kwargs: dict[str, Any]) -> None:
+        for record in self._owners(node, kwargs.get("parent_run_id")):
+            known = {tool["name"] for tool in record["tools"]}
+            for tool in _available_tools(kwargs):
+                if tool["name"] not in known:
+                    known.add(tool["name"])
+                    record["tools"].append(tool)
+
+    async def on_tool_start(
+        self, serialized, input_str, *, run_id, metadata=None, inputs=None, **kwargs
+    ):
+        self._tool_runs[run_id] = {
+            "node": (metadata or {}).get("langgraph_node"),
+            "name": kwargs.get("name") or (serialized or {}).get("name") or "tool",
+            "input": _jsonable(inputs if isinstance(inputs, dict) else input_str),
+            "parent": kwargs.get("parent_run_id"),
+            "started": time.perf_counter(),
+        }
+
+    def _finish_tool(self, run_id, status, output=None, error=None):
+        start = self._tool_runs.pop(run_id, None)
+        if start is None:
+            return
+        call = {
+            "name": start["name"],
+            "input": start["input"],
+            "output": output,
+            "duration_ms": round((time.perf_counter() - start["started"]) * 1000, 1),
+            "status": status,
+            "error": error,
+        }
+        owners = self._owners(start["node"], start["parent"])
+        if not owners:
+            self._orphan_tools.append(call)
+            return
+        for record in owners:
+            if all(tool["name"] != call["name"] for tool in record["tools"]):
+                record["tools"].append({"name": call["name"], "description": ""})
+            record["tool_calls"].append(call)
+
+    async def on_tool_end(self, output, *, run_id, **kwargs):
+        self._finish_tool(run_id, "ok", output=_tool_output(output))
+
+    async def on_tool_error(self, error, *, run_id, **kwargs):
+        self._finish_tool(run_id, "error", error=f"{type(error).__name__}: {error}")
+
     # --- resultado --------------------------------------------------------
     def snapshot(self) -> dict[str, Any]:
         """Estrutura final, anonimizada e dentro do teto de tamanho."""
@@ -359,6 +466,9 @@ class DebugTracker(AsyncCallbackHandler):
             "llm_calls_outside_nodes": [
                 _clean_call(call, clipper, self.editable_types)
                 for call in self._orphan_llm
+            ],
+            "tool_calls_outside_nodes": [
+                clipper.clean(call) for call in self._orphan_tools
             ],
         }
         body["truncated"] = clipper.clipped
