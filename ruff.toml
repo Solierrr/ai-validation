@@ -1,0 +1,5 @@
+[lint.per-file-ignores]
+# Fail-safe intencional: qualquer falha do download ou do LLM vira rejeição.
+"src/workflow/nodes/nr10_agent_node.py" = ["BLE001"]
+"src/workflow/nodes/nr35_agent_node.py" = ["BLE001"]
+"src/workflow/nodes/security_guardrail_node.py" = ["BLE001"]

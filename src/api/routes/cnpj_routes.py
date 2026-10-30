@@ -11,10 +11,11 @@ Endpoint POST /api/v1/companies/validate-cnpj que:
 import logging
 import re
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from src.api.auth import require_access_token
 from src.api.errors import ApiError
 from src.api.schemas.cnpj_schemas import CNPJValidationRequest, CNPJValidationResponse
 from src.api.schemas.problem_schemas import problem_responses
@@ -25,7 +26,10 @@ logger = logging.getLogger(__name__)
 
 limiter = Limiter(key_func=get_remote_address)
 
-router = APIRouter(prefix="/api/v1", tags=["Empresas"])
+router = APIRouter(
+    prefix="/api/v1", tags=["Empresas"], dependencies=[Depends(require_access_token)]
+)
+
 
 
 def _sanitize_cnpj(cnpj: str) -> str:
@@ -41,12 +45,11 @@ def _sanitize_cnpj(cnpj: str) -> str:
         "Recebe um CNPJ, consulta os dados da Receita Federal pela BrasilAPI e usa um agente "
         "de IA para avaliar se as atividades da empresa são compatíveis com o setor de energia "
         "solar e elétrica. CNPJ reprovado é resultado (status INVALID com error_code), não erro "
-        "HTTP. Rota pública, limitada a 20 requisições por minuto por IP."
+        "HTTP. Exige o JWT do usuário, emitido pelo api-auth, e é limitada a 20 requisições por minuto por IP."
     ),
     operation_id="validateCnpj",
-    responses=problem_responses(422, 429, 500, 502),
+    responses=problem_responses(401, 422, 429, 500, 502),
     openapi_extra={
-        "security": [],
         "x-error-codes": [
             "VALIDATION_FAILED",
             "RATE_LIMITED",
@@ -71,6 +74,13 @@ async def validate_cnpj(
     5. Envia CNAEs ao agente de IA para análise de compatibilidade.
     6. Retorna VALID ou INVALID com detalhes.
     """
+    return await run_cnpj_validation(payload)
+
+
+async def run_cnpj_validation(
+    payload: CNPJValidationRequest,
+) -> CNPJValidationResponse:
+    """Executa o fluxo de validação; compartilhado com a rota de debug."""
     # ─── 1. Sanitização ──────────────────────────────────────────────────────
     cnpj_clean = _sanitize_cnpj(payload.cnpj)
 
@@ -89,7 +99,7 @@ async def validate_cnpj(
         company_data = await fetch_cnpj_data(cnpj_clean)
     except Exception as e:
         logger.error("BrasilAPI request failed for CNPJ %s: %s", cnpj_clean, e)
-        raise ApiError(502, "DEPENDENCY_UNAVAILABLE", "Erro ao consultar dados do CNPJ na Receita Federal.")
+        raise ApiError(502, "DEPENDENCY_UNAVAILABLE", "Erro ao consultar dados do CNPJ na Receita Federal.") from e
 
     # CNPJ não encontrado
     if company_data is None:
@@ -125,7 +135,7 @@ async def validate_cnpj(
         audit_result = analyze_company(company_data)
     except Exception as e:
         logger.error("CNPJ agent failed for %s: %s", cnpj_clean, e)
-        raise ApiError(500, "INTERNAL_ERROR", "Erro interno na análise de compatibilidade da empresa.")
+        raise ApiError(500, "INTERNAL_ERROR", "Erro interno na análise de compatibilidade da empresa.") from e
 
     # ─── 5. Monta resposta final ─────────────────────────────────────────────
     if audit_result.is_compatible:

@@ -8,7 +8,7 @@ Estrutura idêntica ao NR-10 agent, com regras específicas da NR-35.
 
 import base64
 import logging
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 from langchain_core.messages import HumanMessage
@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 class NR35AgentOutput(BaseModel):
     """Schema de saída do agente NR-35."""
 
-    valid: bool = Field(description="Indica se o certificado atende a todos os critérios")
+    valid: bool = Field(
+        description="Indica se o certificado atende a todos os critérios"
+    )
     error_code: str | None = Field(
         default=None,
         description="Código de erro (ex: INSUFFICIENT_WORKLOAD, EXPIRED_CERTIFICATE, MISSING_STRUCTURE)",
@@ -55,7 +57,7 @@ class NR35AgentOutput(BaseModel):
     )
 
 
-def nr35_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
+def nr35_agent_node(state: dict[str, Any]) -> dict[str, Any]:
     """
     Nó do agente NR-35 na pipeline LangGraph.
 

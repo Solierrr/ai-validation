@@ -60,11 +60,11 @@ class TestOpenApiContract:
         assert schema["security"] == [{"bearerAuth": []}]
         assert schema["components"]["securitySchemes"]["bearerAuth"]["bearerFormat"] == "JWT"
 
-    def test_public_routes_declare_empty_security(self, client):
+    def test_validation_routes_require_the_jwt_and_health_is_public(self, client):
         paths = client.get("/openapi.json").json()["paths"]
 
-        assert paths["/api/v1/certificates/validate"]["post"]["security"] == []
-        assert paths["/api/v1/companies/validate-cnpj"]["post"]["security"] == []
+        assert paths["/api/v1/certificates/validate"]["post"]["security"] == [{"bearerAuth": []}]
+        assert paths["/api/v1/companies/validate-cnpj"]["post"]["security"] == [{"bearerAuth": []}]
         assert paths["/health"]["get"]["security"] == []
         assert paths["/ready"]["get"]["security"] == []
 
@@ -129,23 +129,61 @@ class TestErrorContract:
 
 
 class TestCorsMiddleware:
-    """CORS liberado para facilitar o consumo pelo front-end."""
+    """CORS limitado às origens de CORS_ALLOWED_ORIGINS, sem credenciais."""
 
     def test_echoes_allowed_origin(self, client):
-        response = client.get("/health", headers={"Origin": "https://meuapp.com"})
+        response = client.get("/health", headers={"Origin": "https://app.exemplo.com"})
 
-        assert response.headers["access-control-allow-origin"] == "https://meuapp.com"
+        assert response.headers["access-control-allow-origin"] == "https://app.exemplo.com"
+        assert "access-control-allow-credentials" not in response.headers
 
-    def test_allows_preflight_request(self, client):
+    def test_does_not_echo_unknown_origin(self, client):
+        response = client.get("/health", headers={"Origin": "https://outro-site.com"})
+
+        assert "access-control-allow-origin" not in response.headers
+
+    def test_allows_preflight_request_with_authorization(self, client):
         response = client.options(
             "/api/v1/companies/validate-cnpj",
             headers={
-                "Origin": "https://meuapp.com",
+                "Origin": "https://app.exemplo.com",
                 "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization,content-type",
             },
         )
 
         assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == "https://app.exemplo.com"
+
+    def test_rejects_preflight_from_unknown_origin(self, client):
+        response = client.options(
+            "/api/v1/companies/validate-cnpj",
+            headers={
+                "Origin": "https://outro-site.com",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+
+        assert response.status_code == 400
+        assert "access-control-allow-origin" not in response.headers
+
+    def test_cors_origins_splits_by_comma_and_ignores_blanks(self):
+        from main import cors_origins
+
+        assert cors_origins(" https://a.com ,, https://b.com,") == [
+            "https://a.com",
+            "https://b.com",
+        ]
+        assert cors_origins("") == []
+
+    def test_default_origins_are_local_only(self):
+        from main import cors_origins
+        from src.core.config.settings import Settings
+
+        assert cors_origins(Settings.model_fields["CORS_ALLOWED_ORIGINS"].default) == [
+            "http://localhost:5173",
+            "http://localhost:3000",
+        ]
 
 
 class TestRateLimiterWiring:

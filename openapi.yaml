@@ -25,8 +25,8 @@ paths:
       - Certificados
       summary: Valida os certificados NR-10 e NR-35 de um profissional
       description: Recebe as URLs das imagens dos certificados NR-10 e NR-35, roda a pipeline multi-agente e devolve ACCEPT
-        ou REJECTED. Certificado reprovado é resultado (status REJECTED com error_code), não erro HTTP. Rota pública, limitada
-        a 10 requisições por minuto por IP.
+        ou REJECTED. Certificado reprovado é resultado (status REJECTED com error_code), não erro HTTP. Exige o JWT do usuário,
+        emitido pelo api-auth, e é limitada a 10 requisições por minuto por IP.
       operationId: validateCertificates
       requestBody:
         content:
@@ -41,20 +41,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CertificateValidationResponse'
-        '422':
-          description: Corpo da requisição inválido
+        '401':
+          description: Credencial ausente ou inválida
           content: &id001
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Corpo da requisição inválido
+          content: *id001
         '429':
           description: Limite de requisições por IP atingido
           content: *id001
         '500':
           description: Erro interno inesperado
           content: *id001
-      security: []
+      security:
+      - bearerAuth: []
       x-error-codes:
+      - UNAUTHENTICATED
       - VALIDATION_FAILED
       - RATE_LIMITED
       - INTERNAL_ERROR
@@ -65,7 +70,8 @@ paths:
       summary: Valida o CNPJ de uma empresa parceira
       description: Recebe um CNPJ, consulta os dados da Receita Federal pela BrasilAPI e usa um agente de IA para avaliar
         se as atividades da empresa são compatíveis com o setor de energia solar e elétrica. CNPJ reprovado é resultado (status
-        INVALID com error_code), não erro HTTP. Rota pública, limitada a 20 requisições por minuto por IP.
+        INVALID com error_code), não erro HTTP. Exige o JWT do usuário, emitido pelo api-auth, e é limitada a 20 requisições
+        por minuto por IP.
       operationId: validateCnpj
       requestBody:
         content:
@@ -80,6 +86,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CNPJValidationResponse'
+        '401':
+          description: Credencial ausente ou inválida
+          content: *id001
         '422':
           description: Corpo da requisição inválido
           content: *id001
@@ -92,7 +101,8 @@ paths:
         '502':
           description: Dependência externa fora do ar ou com resposta inválida
           content: *id001
-      security: []
+      security:
+      - bearerAuth: []
       x-error-codes:
       - VALIDATION_FAILED
       - RATE_LIMITED

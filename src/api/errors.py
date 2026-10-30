@@ -49,7 +49,10 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, exc: HTTPException):
         code = GENERIC_BY_STATUS.get(exc.status_code, "INTERNAL_ERROR")
-        return problem(request, exc.status_code, code, str(exc.detail))
+        response = problem(request, exc.status_code, code, str(exc.detail))
+        if exc.headers:
+            response.headers.update(exc.headers)
+        return response
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError):

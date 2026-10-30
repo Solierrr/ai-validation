@@ -44,6 +44,19 @@ class Settings(BaseSettings):
     def service_keys(self) -> dict[str, str]:
         """Mapa chamador -> chave esperada, a partir de SERVICE_KEY_<CHAMADOR>."""
         return {"api-core": self.SERVICE_KEY_API_CORE}
+    ENVIRONMENT: str = "LOCAL"  # Defina em QA e PROD; o padrão é LOCAL
+
+    DEBUG_ADMIN_SUBS: str = ""
+
+    # Origens do navegador autorizadas a chamar a API (CORS), separadas por vírgula.
+    # Em QA e PROD vêm do ambiente; o padrão cobre só o desenvolvimento local.
+    CORS_ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+
+    # Validação do access token do api-auth (RS256 via JWKS). Com AUTH_REQUIRED ativo
+    # e sem JWT_JWKS_URL, as rotas de validação respondem 503 em vez de ficarem abertas.
+    AUTH_REQUIRED: bool = True
+    JWT_JWKS_URL: str | None = None
+    JWT_ISSUER: str | None = None
 
     # Configuração do pydantic-settings: lê do arquivo .env na raiz do projeto
     # extra="ignore" permite ter variáveis extras no .env sem causar erro

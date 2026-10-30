@@ -20,6 +20,7 @@ from slowapi.util import get_remote_address
 from src.api.errors import problem, register_error_handlers
 from src.api.routes.certificate_routes import router
 from src.api.routes.cnpj_routes import router as cnpj_router
+from src.api.routes.debug_routes import router as debug_router
 from src.api.routes.health_routes import router as health_router
 from src.core.config.settings import get_settings
 from src.core.logging.logging_config import configure_logging
@@ -100,14 +101,20 @@ async def rate_limited(request: Request, exc: RateLimitExceeded):
     )
 
 
+def cors_origins(raw: str) -> list[str]:
+    """Converte a lista separada por vírgula de CORS_ALLOWED_ORIGINS em origens."""
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
 # ─── CORS Middleware ─────────────────────────────────────────────────────────
-# Permite requisições de qualquer origem (ideal para dev; restringir em produção)
+# Só as origens de CORS_ALLOWED_ORIGINS chamam a API pelo navegador. A autenticação
+# vai no header Authorization, sem cookies.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Restringir para domínios autorizados em produção
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=cors_origins(get_settings().CORS_ALLOWED_ORIGINS),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # ─── Rotas ───────────────────────────────────────────────────────────────────
@@ -117,6 +124,8 @@ app.include_router(router)
 app.include_router(cnpj_router)
 # Rotas de saúde (/health e /ready)
 app.include_router(health_router)
+# Rotas de debug (só para administradores; fora do OpenAPI)
+app.include_router(debug_router)
 
 
 # ─── Contrato OpenAPI ────────────────────────────────────────────────────────

@@ -8,10 +8,11 @@ URLs de certificados NR-10 e NR-35 e executa a pipeline multi-agente.
 import logging
 from datetime import date
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from src.api.auth import require_access_token
 from src.api.errors import ApiError
 from src.api.schemas.certificate_schemas import (
     CertificateValidationRequest,
@@ -26,7 +27,9 @@ logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 # Router com prefixo /api/v1 — todas as rotas aqui ficam sob esse path
-router = APIRouter(prefix="/api/v1", tags=["Certificados"])
+router = APIRouter(
+    prefix="/api/v1", tags=["Certificados"], dependencies=[Depends(require_access_token)]
+)
 
 
 @router.post(
@@ -36,14 +39,13 @@ router = APIRouter(prefix="/api/v1", tags=["Certificados"])
     description=(
         "Recebe as URLs das imagens dos certificados NR-10 e NR-35, roda a pipeline "
         "multi-agente e devolve ACCEPT ou REJECTED. Certificado reprovado é resultado "
-        "(status REJECTED com error_code), não erro HTTP. Rota pública, limitada a "
+        "(status REJECTED com error_code), não erro HTTP. Exige o JWT do usuário, emitido pelo api-auth, e é limitada a "
         "10 requisições por minuto por IP."
     ),
     operation_id="validateCertificates",
-    responses=problem_responses(422, 429, 500),
+    responses=problem_responses(401, 422, 429, 500),
     openapi_extra={
-        "security": [],
-        "x-error-codes": ["VALIDATION_FAILED", "RATE_LIMITED", "INTERNAL_ERROR"],
+        "x-error-codes": ["UNAUTHENTICATED", "VALIDATION_FAILED", "RATE_LIMITED", "INTERNAL_ERROR"],
     },
 )
 @limiter.limit("10/minute")  # Máximo 10 validações por minuto por IP

@@ -18,6 +18,7 @@ fastapi
 uvicorn
 httpx
 slowapi
+pyjwt[crypto]
 rapidfuzz
 python-json-logger
 pyyaml
@@ -26,5 +27,5 @@ pytest-asyncio
 pytest-cov
 pytest-mock
 ruff
-solaria-lib @ git+https://github.com/Solierrr/lib-ai.git@e3f352bd687676c5bc43d267cdad870f8cf6e223
+solaria-network>=0.2,<0.3
 python-dotenv

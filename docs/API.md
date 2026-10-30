@@ -13,6 +13,21 @@ O contrato completo e gerado do codigo: `GET /openapi.json` (Swagger em `/docs`,
 
 ---
 
+## Autenticacao e CORS
+
+As rotas `/api/v1/*` exigem `Authorization: Bearer <accessToken>` emitido pelo `api-auth` (JWT RS256, validado pelas chaves publicas do JWKS). Sem token, ou com token invalido, expirado ou de refresh, a resposta e `401`; com `AUTH_REQUIRED` ativo e sem `JWT_JWKS_URL`, e `503`. `GET /health` continua publico.
+
+| Variavel | Padrao | Funcao |
+|----------|--------|--------|
+| `AUTH_REQUIRED` | `true` | Exige o access token nas rotas de validacao; `false` so para desenvolvimento local |
+| `JWT_JWKS_URL` | vazio | JWKS publico do `api-auth` |
+| `JWT_ISSUER` | vazio | Emissor esperado (`solaria-auth`) |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173,http://localhost:3000` | Origens do navegador permitidas, separadas por virgula; sem credenciais e sem `*` |
+
+O navegador envia o preflight `OPTIONS` com o header `Authorization`; ele so e respondido para as origens da lista.
+
+---
+
 ## Endpoints
 
 ### `GET /health`
