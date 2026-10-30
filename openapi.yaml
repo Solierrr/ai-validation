@@ -12,7 +12,7 @@ info:
   license:
     name: CC0-1.0
     url: https://creativecommons.org/publicdomain/zero/1.0/
-  version: 3.1.0 # x-release-please-version
+  version: 3.2.0 # x-release-please-version
 servers:
 - url: https://ai-validation-jjb7.onrender.com
   description: QA

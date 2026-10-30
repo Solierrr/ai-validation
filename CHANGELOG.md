@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.2.0](https://github.com/Solierrr/ai-validation/compare/v3.1.0...v3.2.0) (2026-10-30)
+
+
+### Features
+
+* add the local run commands ([4d1eb6e](https://github.com/Solierrr/ai-validation/commit/4d1eb6eafa4640cd7910f2b4d5896f96ba3f8a73))
+* adopt the openapi, error, version and health standards ([#46](https://github.com/Solierrr/ai-validation/issues/46)) ([4278e58](https://github.com/Solierrr/ai-validation/commit/4278e580f2cfa88afac5137e5ac1ce64e53eeff4))
+* debug endpoint ([#45](https://github.com/Solierrr/ai-validation/issues/45)) ([10ce1d9](https://github.com/Solierrr/ai-validation/commit/10ce1d9bd57b66c7f85b58d43c9c551ba53c62e5))
+* read the llm keys from the environment and add openai ([#41](https://github.com/Solierrr/ai-validation/issues/41)) ([aeb6a14](https://github.com/Solierrr/ai-validation/commit/aeb6a14afa6759c53d348a03c8f71130d82d3e16))
+* restrict cors and require a token on the validation routes ([#50](https://github.com/Solierrr/ai-validation/issues/50)) ([bd8e1f7](https://github.com/Solierrr/ai-validation/commit/bd8e1f77393edad72ab48a125694a2990b2e9460))
+* run a single node with edited prompts in the certificates and cnpj debug routes ([#48](https://github.com/Solierrr/ai-validation/issues/48)) ([a4acf9b](https://github.com/Solierrr/ai-validation/commit/a4acf9bb9bdea68d010b756238dc5d015ca8120b))
+* show the tool calls and the available tools in the debug ([#51](https://github.com/Solierrr/ai-validation/issues/51)) ([7855fc9](https://github.com/Solierrr/ai-validation/commit/7855fc9f3b7d90a2e52ffa9eba74508a075b7292))
+
 ## [3.1.0](https://github.com/Solierrr/ai-validation/compare/v3.0.0...v3.1.0) (2026-09-30)
 
 
