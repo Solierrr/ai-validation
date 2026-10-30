@@ -1,0 +1,421 @@
+openapi: 3.1.0
+info:
+  title: Solaria — ai-validation
+  description: 'Confere documentos enviados por profissionais e empresas parceiras: lê certificados de treinamento em segurança
+    para instalações elétricas (NR-10) e para trabalho em altura (NR-35) e verifica a validade, a carga horária e o nome do
+    aluno, e confirma se o CNPJ de uma empresa parceira está ativo e se a atividade registrada é compatível com o setor de
+    energia solar e elétrica. Documento reprovado é resultado da validação (status), não erro. As rotas de validação são públicas
+    e limitadas por IP.'
+  contact:
+    name: Solaria
+    url: https://github.com/Solierrr
+  license:
+    name: CC0-1.0
+    url: https://creativecommons.org/publicdomain/zero/1.0/
+  version: 3.1.0 # x-release-please-version
+servers:
+- url: https://ai-validation-jjb7.onrender.com
+  description: QA
+- url: http://localhost:8000
+  description: Local
+paths:
+  /api/v1/certificates/validate:
+    post:
+      tags:
+      - Certificados
+      summary: Valida os certificados NR-10 e NR-35 de um profissional
+      description: Recebe as URLs das imagens dos certificados NR-10 e NR-35, roda a pipeline multi-agente e devolve ACCEPT
+        ou REJECTED. Certificado reprovado é resultado (status REJECTED com error_code), não erro HTTP. Exige o JWT do usuário,
+        emitido pelo api-auth, e é limitada a 10 requisições por minuto por IP.
+      operationId: validateCertificates
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CertificateValidationRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertificateValidationResponse'
+        '401':
+          description: Credencial ausente ou inválida
+          content: &id001
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Corpo da requisição inválido
+          content: *id001
+        '429':
+          description: Limite de requisições por IP atingido
+          content: *id001
+        '500':
+          description: Erro interno inesperado
+          content: *id001
+      security:
+      - bearerAuth: []
+      x-error-codes:
+      - UNAUTHENTICATED
+      - VALIDATION_FAILED
+      - RATE_LIMITED
+      - INTERNAL_ERROR
+  /api/v1/companies/validate-cnpj:
+    post:
+      tags:
+      - Empresas
+      summary: Valida o CNPJ de uma empresa parceira
+      description: Recebe um CNPJ, consulta os dados da Receita Federal pela BrasilAPI e usa um agente de IA para avaliar
+        se as atividades da empresa são compatíveis com o setor de energia solar e elétrica. CNPJ reprovado é resultado (status
+        INVALID com error_code), não erro HTTP. Exige o JWT do usuário, emitido pelo api-auth, e é limitada a 20 requisições
+        por minuto por IP.
+      operationId: validateCnpj
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CNPJValidationRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CNPJValidationResponse'
+        '401':
+          description: Credencial ausente ou inválida
+          content: *id001
+        '422':
+          description: Corpo da requisição inválido
+          content: *id001
+        '429':
+          description: Limite de requisições por IP atingido
+          content: *id001
+        '500':
+          description: Erro interno inesperado
+          content: *id001
+        '502':
+          description: Dependência externa fora do ar ou com resposta inválida
+          content: *id001
+      security:
+      - bearerAuth: []
+      x-error-codes:
+      - VALIDATION_FAILED
+      - RATE_LIMITED
+      - INTERNAL_ERROR
+      - DEPENDENCY_UNAVAILABLE
+  /health:
+    get:
+      tags:
+      - Saúde
+      summary: Indica se o processo está vivo
+      operationId: getHealth
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: Erro interno inesperado
+          content: *id001
+      security: []
+  /ready:
+    get:
+      tags:
+      - Saúde
+      summary: Indica se o serviço está pronto para atender
+      operationId: getReady
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: Erro interno inesperado
+          content: *id001
+      security: []
+components:
+  schemas:
+    CNPJValidationRequest:
+      properties:
+        cnpj:
+          type: string
+          title: Cnpj
+          description: CNPJ da empresa parceira com ou sem formatação
+          examples:
+          - 12.345.678/0001-90
+          - '12345678000190'
+      type: object
+      required:
+      - cnpj
+      title: CNPJValidationRequest
+      description: Payload de entrada — recebe o CNPJ com ou sem formatação.
+    CNPJValidationResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          description: VALID ou INVALID
+          examples:
+          - VALID
+          - INVALID
+        cnpj:
+          type: string
+          title: Cnpj
+          description: CNPJ sanitizado (apenas 14 dígitos)
+        company_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Company Name
+          description: Razão social oficial
+        trade_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Trade Name
+          description: Nome fantasia
+        is_active:
+          type: boolean
+          title: Is Active
+          description: Se o CNPJ está ativo na Receita Federal
+          default: false
+        matched_category:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Matched Category
+          description: Categoria compatível identificada pelo agente
+        error_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error Code
+          description: Código de erro padronizado em caso de rejeição
+        reason:
+          type: string
+          title: Reason
+          description: Detalhamento amigável para exibição no app
+      type: object
+      required:
+      - status
+      - cnpj
+      - reason
+      title: CNPJValidationResponse
+      description: 'Payload de saída da API.
+
+
+        Retorna o resultado final: VALID (empresa aprovada) ou INVALID (rejeitada).'
+    CertificateValidationRequest:
+      properties:
+        cert_nr10_url:
+          type: string
+          maxLength: 2083
+          minLength: 1
+          format: uri
+          title: Cert Nr10 Url
+          description: URL da imagem do certificado NR-10
+          examples:
+          - https://storage.meuapp.com/docs/nr10_document.jpg
+        cert_nr35_url:
+          type: string
+          maxLength: 2083
+          minLength: 1
+          format: uri
+          title: Cert Nr35 Url
+          description: URL da imagem do certificado NR-35
+          examples:
+          - https://storage.meuapp.com/docs/nr35_document.png
+      type: object
+      required:
+      - cert_nr10_url
+      - cert_nr35_url
+      title: CertificateValidationRequest
+      description: 'Payload de entrada para validação de certificados.
+
+
+        O cliente envia as URLs públicas das imagens dos certificados NR-10 e NR-35.
+
+        O Pydantic valida automaticamente que são URLs HTTP(S) válidas.'
+    CertificateValidationResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          description: 'Resultado da validação: ACCEPT ou REJECTED'
+          examples:
+          - ACCEPT
+          - REJECTED
+        reason:
+          type: string
+          title: Reason
+          description: Explicação do resultado
+        error_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error Code
+          description: Código de erro padronizado em caso de rejeição
+        extracted_data:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Extracted Data
+          description: Dados extraídos dos certificados
+      type: object
+      required:
+      - status
+      - reason
+      title: CertificateValidationResponse
+      description: 'Payload de saída da validação de certificados.
+
+
+        Retornado ao cliente com o resultado final da pipeline:
+
+        - status: "ACCEPT" (aprovado) ou "REJECTED" (rejeitado)
+
+        - reason: Explicação legível do resultado
+
+        - error_code: Código padronizado de erro (null quando aprovado)
+
+        - extracted_data: Dados extraídos dos certificados (null quando rejeitado)'
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          description: UP ou DOWN
+          examples:
+          - UP
+        version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+          description: Versão do release, só no /health
+          examples:
+          - 3.1.0
+      type: object
+      required:
+      - status
+      title: HealthResponse
+      description: Estado do serviço.
+    ProblemDetail:
+      properties:
+        type:
+          type: string
+          title: Type
+          description: Sempre about:blank
+          examples:
+          - about:blank
+        title:
+          type: string
+          title: Title
+          description: O mesmo valor de errorCode
+          examples:
+          - VALIDATION_FAILED
+        status:
+          type: integer
+          title: Status
+          description: Código HTTP
+          examples:
+          - 422
+        errorCode:
+          type: string
+          title: Errorcode
+          description: Código estável do catálogo de erros
+          examples:
+          - VALIDATION_FAILED
+        detail:
+          type: string
+          title: Detail
+          description: Explicação para quem depura, em português; o front não exibe
+          examples:
+          - Erro de validação nos campos da requisição.
+        instance:
+          type: string
+          title: Instance
+          description: Caminho da requisição
+          examples:
+          - /api/v1/companies/validate-cnpj
+        timestamp:
+          type: string
+          format: date-time
+          title: Timestamp
+          description: Momento do erro, em UTC
+        traceId:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Traceid
+          description: Id do trace, quando houver
+        errors:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ProblemFieldError'
+            type: array
+          - type: 'null'
+          title: Errors
+          description: Erros por campo, só em validação
+      type: object
+      required:
+      - type
+      - title
+      - status
+      - errorCode
+      - detail
+      - instance
+      - timestamp
+      title: ProblemDetail
+      description: Corpo de todo erro HTTP (application/problem+json).
+    ProblemFieldError:
+      properties:
+        field:
+          type: string
+          title: Field
+          description: Campo com erro
+          examples:
+          - cnpj
+        errorCode:
+          type: string
+          title: Errorcode
+          description: Código estável do erro
+          examples:
+          - VALIDATION_FAILED
+        detail:
+          type: string
+          title: Detail
+          description: Explicação para quem depura
+          examples:
+          - Field required
+      type: object
+      required:
+      - field
+      - errorCode
+      - detail
+      title: ProblemFieldError
+      description: Erro de um campo na validação da requisição.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT RS256 emitido pelo api-auth
+tags:
+- name: Certificados
+  description: Validação dos certificados NR-10 e NR-35 de profissionais
+- name: Empresas
+  description: Validação do CNPJ de empresas parceiras
+- name: Saúde
+  description: Estado do serviço (vivo e pronto)
+security:
+- bearerAuth: []

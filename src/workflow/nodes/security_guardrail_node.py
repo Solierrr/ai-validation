@@ -89,7 +89,7 @@ def security_guardrail_node(state: dict[str, Any]) -> dict[str, Any]:
     try:
         nr10_b64, nr10_mime = _download_image(state["cert_nr10_url"])
         nr35_b64, nr35_mime = _download_image(state["cert_nr35_url"])
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.error("Failed to download certificate images: %s", e)
         return {
             "is_safe": False,
@@ -134,7 +134,7 @@ def security_guardrail_node(state: dict[str, Any]) -> dict[str, Any]:
             output_schema=GuardrailOutput,
             allow_groq_fallback=False,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         # Em caso de falha total do LLM, assume que não é seguro (fail-safe)
         logger.error("Security guardrail LLM call failed: %s", e)
         return {

@@ -15,6 +15,7 @@ BUILD_CMD     ?= $(PY) -m compileall -q main.py src tests
 TEST_CMD      ?= $(PY) -m pytest tests --cov=src --cov-report=term-missing
 LINT_CMD      ?= $(PY) -m ruff check main.py src/workflow src/core/llm && $(PY) -m ruff format --check main.py src/workflow src/core/llm
 FORMAT_CMD    ?= $(PY) -m ruff format main.py src/workflow src/core/llm
+OPENAPI_CMD   ?= $(PY) scripts/export_openapi.py
 CLEAN_PATHS   ?= .venv .pytest_cache .ruff_cache .mypy_cache
 DOCTOR_TOOLS  ?= git python
 
@@ -31,7 +32,7 @@ INFISICAL ?= infisical
 endif
 
 .DEFAULT_GOAL := help
-.PHONY: help verify-vault vault env dev install build test lint format clean doctor ci
+.PHONY: help verify-vault vault env dev install build test lint format openapi clean doctor ci
 
 help: ## Show the available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\n"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -78,6 +79,9 @@ lint: ## Run the linter
 
 format: ## Format the code
 	$(if $(strip $(FORMAT_CMD)),set -e; $(FORMAT_CMD),@echo "format: not configured for this repository")
+
+openapi: ## Export the OpenAPI contract to openapi.yaml
+	$(if $(strip $(OPENAPI_CMD)),set -e; $(OPENAPI_CMD),@echo "openapi: not configured for this repository")
 
 clean: ## Remove build outputs (CLEAN_PATHS)
 	$(if $(strip $(CLEAN_PATHS)),rm -rf $(CLEAN_PATHS),@echo "clean: not configured for this repository")

@@ -42,6 +42,7 @@ O `ai-validation` é o serviço de validação automatizada por IA da plataforma
 - [docs/API.md](./docs/API.md), contrato completo dos endpoints, payloads e códigos de erro.
 - [docs/AGENT_WORKFLOW.md](./docs/AGENT_WORKFLOW.md), detalhamento da pipeline multi-agente de validação de certificados.
 - [docs/CNPJ_WORKFLOW.md](./docs/CNPJ_WORKFLOW.md), detalhamento do fluxo de validação de CNPJ.
+- [docs/debug-endpoint.md](./docs/debug-endpoint.md), modo debug (`/debug/*`) para administradores: etapas de cada fluxo, acesso e o que nunca sai.
 
 ## Contribuindo
 

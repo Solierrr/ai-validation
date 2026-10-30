@@ -6,7 +6,13 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "package-name": "ai-validation"
+      "package-name": "ai-validation",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "openapi.yaml"
+        }
+      ]
     }
   }
 }

@@ -1,5 +1,8 @@
 """Testes do módulo de configuração (src/core/config/settings.py)."""
 
+import pytest
+from pydantic import ValidationError
+
 from src.core.config.settings import Settings, get_settings
 
 
@@ -36,3 +39,19 @@ class TestSettingsCache:
         get_settings.cache_clear()
 
         assert get_settings() is not first
+
+
+class TestServiceKeys:
+    """Chaves de serviço dos chamadores aceitos (X-Service-Key)."""
+
+    def test_service_key_is_empty_by_default(self):
+        assert Settings().service_keys == {"api-core": ""}
+
+    def test_maps_the_api_core_key(self):
+        key = "k" * 32
+
+        assert Settings(SERVICE_KEY_API_CORE=key).service_keys == {"api-core": key}
+
+    def test_refuses_a_short_service_key(self):
+        with pytest.raises(ValidationError):
+            Settings(SERVICE_KEY_API_CORE="curta")
