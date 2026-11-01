@@ -1,0 +1,9 @@
+{
+  "service": "ai-validation",
+  "aliases": [
+    "validation",
+    "ai-validation"
+  ],
+  "project": "AI",
+  "host": "https://validation.solarianetwork.site"
+}
