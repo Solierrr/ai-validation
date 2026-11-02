@@ -63,3 +63,56 @@ Os logs saem em JSON, e o debug administrativo mostra as etapas e permite uma re
 O `/health` retorna o estado e a versão, e o `/ready` retorna só o estado, sem consultar a BrasilAPI, o JWKS ou os modelos, por isso uma resposta positiva não comprova que uma validação real será atendida.
 
 A versão é lida de `version.txt`, hoje `3.1.0`, e a revisão analisada é a `7855fc9f`, de 2026-10-30. As fontes principais são o [bootstrap](https://github.com/Solierrr/ai-validation/blob/main/main.py), o [JWT](https://github.com/Solierrr/ai-validation/blob/main/src/core/security/jwt.py), o [grafo](https://github.com/Solierrr/ai-validation/blob/main/src/workflow/graph/graph.py), as [settings](https://github.com/Solierrr/ai-validation/blob/main/src/core/config/settings.py) e o [download](https://github.com/Solierrr/ai-validation/blob/main/src/workflow/nodes/security_guardrail_node.py).
+
+## Diagrama de arquitetura
+
+### Onde o serviço se encaixa
+
+O `ai-validation` não conversa: recebe um documento ou um CNPJ, devolve um veredito e não guarda sessão. As rotas `/api/v1/*` exigem o access token JWT do usuário, emitido pelo `api-auth` e validado pelas chaves públicas (JWKS); o navegador pode chamá-las direto (há CORS). Por isso ele não participa do A2A. A decisão final é sempre código, nunca o modelo.
+
+```mermaid
+flowchart LR
+    WEB["web-app"] -->|"REST + JWT do usuário"| API
+    API -.->|"valida o JWT (JWKS)"| AUTH["api-auth"]
+
+    subgraph VAL["ai-validation (FastAPI)"]
+        API["POST /api/v1/certificates/validate<br/>POST /api/v1/companies/validate-cnpj"]
+        WF["fluxo de certificados<br/>LangGraph"]
+        CN["fluxo de CNPJ"]
+    end
+
+    API --> WF
+    API --> CN
+    WF -->|"imagem do certificado"| LLM["Gemini (visão)<br/>com retry e várias chaves"]
+    CN -->|"CNAEs"| LLM
+    CN -->|"consulta o CNPJ"| BR["BrasilAPI<br/>Receita Federal"]
+    WF -->|"baixa a imagem"| IMG["URL da imagem<br/>enviada pelo cliente"]
+```
+
+### Fluxo de certificados NR-10 e NR-35
+
+```mermaid
+flowchart TD
+    START([2 URLs de certificado]) --> SG["security_guardrail<br/>baixa as imagens e detecta<br/>injeção e documento ilegível (LLM visão)"]
+    SG -->|"seguro"| N10["nr10_agent<br/>extrai e valida o NR-10 (LLM visão)"]
+    SG -->|"inseguro"| CONS
+    N10 --> N35["nr35_agent<br/>extrai e valida o NR-35 (LLM visão)"]
+    N35 --> CONS["consolidation<br/>decisão final em código, sem LLM"]
+    CONS --> OUT([ACCEPT ou REJECTED])
+```
+
+A `consolidation` aplica as regras na ordem: segurança, validade e prazo de cada certificado (mais de 24 meses rejeita), carga horária mínima (NR-10: 20 h, NR-35: 8 h), nomes extraídos e semelhança de nome entre os dois documentos (abaixo de 85% rejeita). Qualquer falha não tratada também resulta em rejeição, nunca em aprovação silenciosa.
+
+### Fluxo de CNPJ
+
+```mermaid
+flowchart TD
+    A([CNPJ]) --> B["sanitiza e confere 14 dígitos"]
+    B --> C["consulta a BrasilAPI"]
+    C -->|"não existe"| X1([INVALID: não encontrado])
+    C -->|"existe"| D{"ativo?"}
+    D -->|"não"| X2([INVALID: inativo])
+    D -->|"sim"| E["cnpj_agent<br/>analisa os CNAEs (LLM)"]
+    E -->|"compatível com energia solar e elétrica"| OK([VALID])
+    E -->|"incompatível"| X3([INVALID: categoria da empresa])
+```
