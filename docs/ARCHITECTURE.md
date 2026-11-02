@@ -101,7 +101,7 @@ flowchart TD
     CONS --> OUT([ACCEPT ou REJECTED])
 ```
 
-A `consolidation` aplica as regras na ordem: segurança, validade e prazo de cada certificado (mais de 24 meses rejeita), carga horária mínima (NR-10: 20 h, NR-35: 8 h), nomes extraídos e semelhança de nome entre os dois documentos (abaixo de 85% rejeita). Qualquer falha não tratada também resulta em rejeição, nunca em aprovação silenciosa.
+A `consolidation` aplica as regras na ordem: segurança, validade e prazo de cada certificado (mais de 24 meses rejeita), carga horária mínima (NR-10: 20 h, e o prompt cita 20 h de reciclagem ou 40 h de formação; NR-35: 8 h), nomes extraídos e semelhança de nome entre os dois documentos (abaixo de 85% rejeita). Qualquer falha não tratada também resulta em rejeição, nunca em aprovação silenciosa.
 
 ### Fluxo de CNPJ
 
