@@ -60,6 +60,8 @@ O fallback externo só avança por erro reconhecido como rate limit. Chamadas de
 
 Os logs saem em JSON, e o debug administrativo mostra as etapas e permite uma reexecução controlada, como descreve o [fluxo de depuração](../flows/DEBUG_REPLAY.md). O serviço não guarda dados de negócio, e tanto os limites quanto o debug valem só para a instância em execução.
 
+O OpenTelemetry é ligado por `OTEL_SDK_DISABLED=false` e envia traces e métricas por OTLP/HTTP para `OTEL_EXPORTER_OTLP_ENDPOINT`, instrumentando o FastAPI e o HTTPX com as URLs ocultadas nos spans, como mostra o [`otel_setup.py`](https://github.com/Solierrr/ai-validation/blob/main/src/otel_setup.py). Sem essa variável, a telemetria fica desligada.
+
 O `/health` retorna o estado e a versão, e o `/ready` retorna só o estado, sem consultar a BrasilAPI, o JWKS ou os modelos, por isso uma resposta positiva não comprova que uma validação real será atendida.
 
 A versão é lida de `version.txt`, hoje `3.1.0`, e a revisão analisada é a `7855fc9f`, de 2026-10-30. As fontes principais são o [bootstrap](https://github.com/Solierrr/ai-validation/blob/main/main.py), o [JWT](https://github.com/Solierrr/ai-validation/blob/main/src/core/security/jwt.py), o [grafo](https://github.com/Solierrr/ai-validation/blob/main/src/workflow/graph/graph.py), as [settings](https://github.com/Solierrr/ai-validation/blob/main/src/core/config/settings.py) e o [download](https://github.com/Solierrr/ai-validation/blob/main/src/workflow/nodes/security_guardrail_node.py).

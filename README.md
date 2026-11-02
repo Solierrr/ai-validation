@@ -30,7 +30,6 @@ Os clientes enviam duas imagens acessíveis por endereço ou um CNPJ e recebem u
 - [DEPLOY.md](./docs/DEPLOY.md), ambientes e publicação.
 - [STATUS.md](./docs/STATUS.md), limitações e divergências.
 - [Fluxos](./flows/), certificados, empresas e depuração.
-- [PENDENCIAS.md](./PENDENCIAS.md), confirmações para o responsável.
 
 ## Contribuindo
 
