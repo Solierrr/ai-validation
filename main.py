@@ -24,6 +24,7 @@ from src.api.routes.debug_routes import router as debug_router
 from src.api.routes.health_routes import router as health_router
 from src.core.config.settings import get_settings
 from src.core.logging.logging_config import configure_logging
+from src.otel_setup import configure_otel
 from src.version import VERSION
 
 # Carrega variáveis de ambiente do arquivo .env para o os.environ
@@ -198,3 +199,5 @@ def public_openapi() -> dict:
 
 
 app.openapi = public_openapi
+
+configure_otel(app, "ai-validation")
